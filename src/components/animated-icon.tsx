@@ -103,7 +103,7 @@ export function AnimatedIcon() {
       >
         <Image
           style={styles.image}
-          source={require("@/assets/images/expo-logo.png")}
+          source={require("@/assets/images/logo.png")}
         />
       </Animated.View>
     </View>
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   background: {
     borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    experimental_backgroundImage: `linear-gradient(180deg, #f6730b, #b45e14)`,
     width: 128,
     height: 128,
     position: "absolute",
