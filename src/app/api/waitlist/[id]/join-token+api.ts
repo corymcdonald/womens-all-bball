@@ -9,36 +9,36 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Missing user ID" }, { status: 401 });
   }
 
-  const { passcode } = await request.json();
-  if (!passcode) {
-    return Response.json({ error: "Passcode is required" }, { status: 400 });
+  const { token } = await request.json();
+  if (!token) {
+    return Response.json({ error: "Token is required" }, { status: 400 });
   }
 
-  // Verify waitlist and passcode
-  const { data: waitlist } = await supabase
-    .from("waitlists")
-    .select("id, passcode")
-    .eq("id", id)
+  // Validate token exists, matches this waitlist, and hasn't expired
+  const { data: tokenRow } = await supabase
+    .from("waitlist_tokens")
+    .select("id, waitlist_id, expires_at")
+    .eq("token", token)
+    .eq("waitlist_id", id)
     .single();
 
-  if (!waitlist) {
-    return Response.json({ error: "Waitlist not found" }, { status: 404 });
+  if (!tokenRow) {
+    return Response.json({ error: "Invalid token" }, { status: 403 });
   }
 
-  if (waitlist.passcode !== passcode) {
-    return Response.json({ error: "Invalid passcode" }, { status: 403 });
+  // 30s grace period so scans near expiry still work
+  const GRACE_PERIOD_MS = 30 * 1000;
+  if (new Date(tokenRow.expires_at).getTime() + GRACE_PERIOD_MS < Date.now()) {
+    return Response.json({ error: "Token expired" }, { status: 403 });
   }
 
-  // Check for existing active row
+  // If already in the waitlist, just return success (token validated = authorized)
   const activeRow = await hasActiveRow(id, userId);
   if (activeRow) {
-    return Response.json(
-      { error: `Already in waitlist with status: ${activeRow.status}` },
-      { status: 409 },
-    );
+    return Response.json({ authorized: true, existing: activeRow });
   }
 
-  // Create new waitlist_players row
+  // Join the waitlist
   const { data, error } = await supabase
     .from("waitlist_players")
     .insert({
@@ -50,6 +50,7 @@ export async function POST(request: Request, { id }: { id: string }) {
     .single();
 
   if (error) {
+    // Handle race condition: unique constraint means they joined between our check and insert
     if (error.code === "23505") {
       return Response.json({ authorized: true, existing: true });
     }
