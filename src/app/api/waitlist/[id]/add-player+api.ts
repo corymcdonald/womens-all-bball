@@ -1,7 +1,8 @@
-import { supabase } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/auth";
+import { joinAndAdvance } from "@/lib/services/orchestrator";
+import { ServiceError } from "@/lib/services/service-error";
+import { supabase } from "@/lib/supabase";
 import { hasActiveRow } from "@/lib/waitlist";
-import { publishEvent } from "@/lib/ably";
 
 export async function POST(request: Request, { id }: { id: string }) {
   await requireAdmin(request);
@@ -10,7 +11,6 @@ export async function POST(request: Request, { id }: { id: string }) {
 
   let targetUserId = user_id;
 
-  // If no user_id provided, create a new user with just a name
   if (!targetUserId) {
     if (!first_name || !last_name) {
       return Response.json(
@@ -32,7 +32,6 @@ export async function POST(request: Request, { id }: { id: string }) {
     targetUserId = newUser.id;
   }
 
-  // Check for existing active row
   const activeRow = await hasActiveRow(id, targetUserId);
   if (activeRow) {
     return Response.json(
@@ -41,21 +40,15 @@ export async function POST(request: Request, { id }: { id: string }) {
     );
   }
 
-  const { data, error } = await supabase
-    .from("waitlist_players")
-    .insert({
-      waitlist_id: id,
-      user_id: targetUserId,
-      status: "waiting",
-    })
-    .select("*, users(id, first_name, last_name)")
-    .single();
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  try {
+    const player = await joinAndAdvance(id, targetUserId);
+    return Response.json(player, { status: 201 });
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
+    }
+    const msg = e instanceof Error ? e.message : "Internal error";
+    console.error("[api]", msg, e);
+    return Response.json({ error: msg }, { status: 500 });
   }
-
-  await publishEvent(`waitlist:${id}`, "updated");
-
-  return Response.json(data, { status: 201 });
 }

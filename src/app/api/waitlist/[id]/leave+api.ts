@@ -1,7 +1,8 @@
-import { supabase } from "@/lib/supabase";
-import { hasActiveRow, transitionStatus } from "@/lib/waitlist";
-import { getUserId } from "@/lib/auth";
 import { publishEvent } from "@/lib/ably";
+import { getUserId } from "@/lib/auth";
+import { leaveQueue } from "@/lib/services/queue-service";
+import { ServiceError } from "@/lib/services/service-error";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const userId = getUserId(request);
@@ -9,25 +10,22 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Missing user ID" }, { status: 401 });
   }
 
-  const activeRow = await hasActiveRow(id, userId);
-  if (!activeRow) {
+  try {
+    const data = await leaveQueue(id, userId);
+    posthogServer?.capture({
+      distinctId: userId,
+      event: "queue_left",
+      properties: { waitlist_id: id },
+    });
+    await publishEvent(`waitlist:${id}`, "updated");
+    return Response.json(data);
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
+    }
     return Response.json(
-      { error: "Not currently in the waitlist" },
-      { status: 404 },
+      { error: e instanceof Error ? e.message : "Failed" },
+      { status: 500 },
     );
   }
-
-  // Only waiting and absent players can leave on their own
-  if (activeRow.status !== "waiting" && activeRow.status !== "absent") {
-    return Response.json(
-      { error: `Cannot leave while status is: ${activeRow.status}` },
-      { status: 400 },
-    );
-  }
-
-  const data = await transitionStatus(activeRow.id, activeRow.status, "left");
-
-  await publishEvent(`waitlist:${id}`, "updated");
-
-  return Response.json(data);
 }

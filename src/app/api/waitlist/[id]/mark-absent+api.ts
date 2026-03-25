@@ -1,10 +1,12 @@
-import { supabase } from "@/lib/supabase";
-import { requireAdmin } from "@/lib/auth";
-import { transitionStatus, getNextWaitingPlayer } from "@/lib/waitlist";
 import { publishEvent } from "@/lib/ably";
+import { requireAdmin } from "@/lib/auth";
+import { removeFromPlay } from "@/lib/services/queue-service";
+import { checkAndAdvance } from "@/lib/services/orchestrator";
+import { ServiceError } from "@/lib/services/service-error";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   const { waitlist_player_id, team_id } = await request.json();
 
@@ -15,42 +17,28 @@ export async function POST(request: Request, { id }: { id: string }) {
     );
   }
 
-  // Get the player being marked absent
-  const { data: player } = await supabase
-    .from("waitlist_players")
-    .select("*")
-    .eq("id", waitlist_player_id)
-    .eq("waitlist_id", id)
-    .single();
-
-  if (!player) {
-    return Response.json({ error: "Player not found" }, { status: 404 });
-  }
-
-  // Mark them absent
-  const absentPlayer = await transitionStatus(
-    player.id,
-    player.status,
-    "absent",
-  );
-
-  // If the absent player was on a team, swap in the next waiting player
-  let replacement = null;
-  if (player.status === "waiting" && team_id) {
-    const nextPlayer = await getNextWaitingPlayer(id);
-    if (nextPlayer) {
-      // Mark replacement as playing
-      replacement = await transitionStatus(nextPlayer.id, "waiting", "playing");
-
-      // Add replacement to the team
-      await supabase.from("team_players").insert({
-        team_id,
-        user_id: nextPlayer.user_id,
-      });
+  try {
+    const result = await removeFromPlay(
+      id,
+      waitlist_player_id,
+      "absent",
+      team_id,
+    );
+    posthogServer?.capture({
+      distinctId: admin.id,
+      event: "player_marked_absent",
+      properties: { waitlist_id: id, waitlist_player_id },
+    });
+    await publishEvent(`waitlist:${id}`, "updated");
+    await checkAndAdvance(id);
+    return Response.json(result);
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
     }
+    return Response.json(
+      { error: e instanceof Error ? e.message : "Failed" },
+      { status: 500 },
+    );
   }
-
-  await publishEvent(`waitlist:${id}`, "updated");
-
-  return Response.json({ absentPlayer, replacement });
 }

@@ -14,6 +14,7 @@ import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useUser } from "@/lib/user-context";
 import { registerUser } from "@/lib/api";
+import { posthog } from "@/lib/posthog";
 
 export default function RegisterScreen() {
   const theme = useTheme();
@@ -37,6 +38,7 @@ export default function RegisterScreen() {
         last_name: lastName.trim(),
         phone: phone.trim() || undefined,
       });
+      posthog.capture("player_registered", { user_id: user.id });
       await login(user);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Registration failed");
@@ -107,9 +109,7 @@ export default function RegisterScreen() {
             />
           </ThemedView>
 
-          {error ? (
-            <ThemedText style={styles.error}>{error}</ThemedText>
-          ) : null}
+          {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
 
           <TouchableOpacity
             style={[styles.button, !canSubmit && styles.buttonDisabled]}

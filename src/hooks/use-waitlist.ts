@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import { useUser } from "@/lib/user-context";
 import { useAblyChannel } from "@/hooks/use-ably-channel";
@@ -14,6 +14,8 @@ export function useWaitlist() {
 
   const [waitlistId, setWaitlistId] = useState<string | null>(null);
   const [data, setData] = useState<WaitlistData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [mutating, setMutating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [error, setError] = useState("");
@@ -32,8 +34,27 @@ export function useWaitlist() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
     }
   }, []);
+
+  // Wrap a mutating action: set mutating flag, run action + refresh, clear flag
+  const withMutation = useCallback(
+    async (fn: () => Promise<void>) => {
+      setMutating(true);
+      setError("");
+      try {
+        await fn();
+        await fetchLatestWaitlist();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed");
+      } finally {
+        setMutating(false);
+      }
+    },
+    [fetchLatestWaitlist],
+  );
 
   useEffect(() => {
     fetchLatestWaitlist();
@@ -51,134 +72,86 @@ export function useWaitlist() {
     setRefreshing(false);
   }, [fetchLatestWaitlist]);
 
-  async function joinWithToken(token: string) {
-    if (!waitlistId) return;
-    setError("");
-    try {
-      await api.joinWaitlistWithToken(waitlistId, token);
-      await addAuthorizedWaitlist(waitlistId);
-      setIsAuthorized(true);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to join");
-    }
-  }
+  const joinWithToken = useCallback(
+    (token: string) =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.joinWaitlistWithToken(waitlistId, token);
+        await addAuthorizedWaitlist(waitlistId);
+        setIsAuthorized(true);
+      }),
+    [waitlistId, withMutation],
+  );
 
-  async function quickJoin() {
-    if (!waitlistId) return;
-    setError("");
-    try {
-      await api.rejoinWaitlist(waitlistId);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to join");
-    }
-  }
+  const quickJoin = useCallback(
+    () =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.rejoinWaitlist(waitlistId);
+      }),
+    [waitlistId, withMutation],
+  );
 
-  async function leave() {
-    if (!waitlistId) return;
-    try {
-      await api.leaveWaitlist(waitlistId);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to leave");
-    }
-  }
+  const leave = useCallback(
+    () =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.leaveWaitlist(waitlistId);
+      }),
+    [waitlistId, withMutation],
+  );
 
-  async function formTeam() {
-    if (!waitlistId) return;
-    try {
-      await api.formTeam(waitlistId);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Not enough players");
-    }
-  }
+  const markAbsent = useCallback(
+    (waitlistPlayerId: string) =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.markAbsent(waitlistId, waitlistPlayerId);
+      }),
+    [waitlistId, withMutation],
+  );
 
-  async function markAbsent(waitlistPlayerId: string) {
-    if (!waitlistId) return;
-    try {
-      await api.markAbsent(waitlistId, waitlistPlayerId);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-    }
-  }
+  const markPresent = useCallback(
+    (waitlistPlayerId: string) =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.markPresent(waitlistId, waitlistPlayerId);
+      }),
+    [waitlistId, withMutation],
+  );
 
-  async function markPresent(waitlistPlayerId: string) {
-    if (!waitlistId) return;
-    try {
-      await api.markPresent(waitlistId, waitlistPlayerId);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-    }
-  }
+  const markLeft = useCallback(
+    (waitlistPlayerId: string) =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.markLeft(waitlistId, waitlistPlayerId);
+      }),
+    [waitlistId, withMutation],
+  );
 
-  async function markLeft(waitlistPlayerId: string) {
-    if (!waitlistId) return;
-    try {
-      await api.markLeft(waitlistId, waitlistPlayerId);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-    }
-  }
+  const reorder = useCallback(
+    (playerIds: string[]) =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.reorderQueue(waitlistId, playerIds);
+      }),
+    [waitlistId, withMutation],
+  );
 
-  async function reorder(playerIds: string[]) {
-    if (!waitlistId) return;
-    try {
-      await api.reorderQueue(waitlistId, playerIds);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reorder");
-    }
-  }
+  const declareWinner = useCallback(
+    (gameId: string, winnerId: string) =>
+      withMutation(async () => {
+        await api.completeGame(gameId, winnerId);
+      }),
+    [withMutation],
+  );
 
-  async function startGame(team1Id: string, team2Id: string) {
-    if (!waitlistId) return;
-    try {
-      await api.createGame(waitlistId, team1Id, team2Id);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to start game");
-    }
-  }
-
-  async function endGame(
-    gameId: string,
-    winnerId: string,
-  ): Promise<{
-    streak_maxed: boolean;
-    players_needed: number;
-  } | null> {
-    try {
-      const result = await api.completeGame(gameId, winnerId);
-      await fetchLatestWaitlist();
-      return result;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to end game");
-      return null;
-    }
-  }
-
-  async function nextGame(gameId: string, stayingTeamId?: string) {
-    try {
-      await api.nextGame(gameId, stayingTeamId);
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to start next game");
-    }
-  }
-
-  async function updateTeamColor(teamId: string, color: string) {
-    try {
-      await api.updateTeam(teamId, { color });
-      await fetchLatestWaitlist();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update color");
-    }
-  }
+  const updateTeamColor = useCallback(
+    (teamId: string, color: string) =>
+      withMutation(async () => {
+        await api.updateTeam(teamId, { color });
+      }),
+    [withMutation],
+  );
 
   const isInQueue = !!data?.queue.find((p) => p.user_id === user?.id);
   const isPlaying = !!data?.playing.some((p) => p.user_id === user?.id);
@@ -186,6 +159,8 @@ export function useWaitlist() {
   return {
     waitlistId,
     data,
+    loading,
+    mutating,
     refreshing,
     isAuthorized,
     error,
@@ -197,14 +172,11 @@ export function useWaitlist() {
     joinWithToken,
     quickJoin,
     leave,
-    formTeam,
     markAbsent,
     markPresent,
     markLeft,
     reorder,
-    startGame,
-    endGame,
-    nextGame,
+    declareWinner,
     updateTeamColor,
   };
 }

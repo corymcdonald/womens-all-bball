@@ -154,9 +154,7 @@ export function JoinSection({
                 style={styles.scannerCloseButton}
                 onPress={() => setShowScanner(false)}
               >
-                <ThemedText style={styles.scannerCloseText}>
-                  Cancel
-                </ThemedText>
+                <ThemedText style={styles.scannerCloseText}>Cancel</ThemedText>
               </TouchableOpacity>
             </View>
             <View

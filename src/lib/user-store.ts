@@ -54,9 +54,7 @@ export async function getAuthorizedWaitlists(): Promise<string[]> {
   return data ? JSON.parse(data) : [];
 }
 
-export async function addAuthorizedWaitlist(
-  waitlistId: string,
-): Promise<void> {
+export async function addAuthorizedWaitlist(waitlistId: string): Promise<void> {
   const current = await getAuthorizedWaitlists();
   if (!current.includes(waitlistId)) {
     current.push(waitlistId);

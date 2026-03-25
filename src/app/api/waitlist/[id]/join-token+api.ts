@@ -1,7 +1,9 @@
+import { getUserId } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { hasActiveRow } from "@/lib/waitlist";
-import { getUserId } from "@/lib/auth";
-import { publishEvent } from "@/lib/ably";
+import { joinAndAdvance } from "@/lib/services/orchestrator";
+import { ServiceError } from "@/lib/services/service-error";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const userId = getUserId(request);
@@ -14,7 +16,7 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Token is required" }, { status: 400 });
   }
 
-  // Validate token exists, matches this waitlist, and hasn't expired
+  // Validate token (endpoint-specific auth)
   const { data: tokenRow } = await supabase
     .from("waitlist_tokens")
     .select("id, waitlist_id, expires_at")
@@ -26,38 +28,31 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Invalid token" }, { status: 403 });
   }
 
-  // 30s grace period so scans near expiry still work
   const GRACE_PERIOD_MS = 30 * 1000;
   if (new Date(tokenRow.expires_at).getTime() + GRACE_PERIOD_MS < Date.now()) {
     return Response.json({ error: "Token expired" }, { status: 403 });
   }
 
-  // If already in the waitlist, just return success (token validated = authorized)
+  // Already in waitlist = success (token validated = authorized)
   const activeRow = await hasActiveRow(id, userId);
   if (activeRow) {
     return Response.json({ authorized: true, existing: activeRow });
   }
 
-  // Join the waitlist
-  const { data, error } = await supabase
-    .from("waitlist_players")
-    .insert({
-      waitlist_id: id,
-      user_id: userId,
-      status: "waiting",
-    })
-    .select()
-    .single();
-
-  if (error) {
-    // Handle race condition: unique constraint means they joined between our check and insert
-    if (error.code === "23505") {
-      return Response.json({ authorized: true, existing: true });
+  try {
+    const player = await joinAndAdvance(id, userId);
+    posthogServer?.capture({
+      distinctId: userId,
+      event: "queue_joined_with_token",
+      properties: { waitlist_id: id },
+    });
+    return Response.json(player, { status: 201 });
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
     }
-    return Response.json({ error: error.message }, { status: 500 });
+    const msg = e instanceof Error ? e.message : "Internal error";
+    console.error("[api]", msg, e);
+    return Response.json({ error: msg }, { status: 500 });
   }
-
-  await publishEvent(`waitlist:${id}`, "updated");
-
-  return Response.json(data, { status: 201 });
 }

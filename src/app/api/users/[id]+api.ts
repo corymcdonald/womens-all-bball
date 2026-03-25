@@ -27,9 +27,16 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   const updates: Record<string, unknown> = {};
 
   // Profile fields — only the user themselves can update
-  if (body.first_name !== undefined || body.last_name !== undefined || body.phone !== undefined) {
+  if (
+    body.first_name !== undefined ||
+    body.last_name !== undefined ||
+    body.phone !== undefined
+  ) {
     if (requesterId !== id) {
-      return Response.json({ error: "Can only update your own profile" }, { status: 403 });
+      return Response.json(
+        { error: "Can only update your own profile" },
+        { status: 403 },
+      );
     }
     if (body.first_name !== undefined) updates.first_name = body.first_name;
     if (body.last_name !== undefined) updates.last_name = body.last_name;

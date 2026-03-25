@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -14,11 +14,15 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { OnCourtCard } from "@/components/on-court-card";
+import { GameCard } from "@/components/game-card";
 import { StatsBar } from "@/components/stats-bar";
 import { QueueItem, type QueuePlayer } from "@/components/queue-item";
 import { JoinSection } from "@/components/join-section";
-import { StagedTeams } from "@/components/staged-teams";
+import {
+  Skeleton,
+  SkeletonCard,
+  SkeletonQueueItem,
+} from "@/components/skeleton";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useJoinDeepLink } from "@/hooks/use-join-deeplink";
@@ -33,6 +37,14 @@ export default function HomeScreen() {
   const { user } = useUser();
   const isAdmin = user?.role === "admin";
   const [editMode, setEditMode] = useState(false);
+  const [pendingWinner, setPendingWinner] = useState<{
+    winnerColor: string;
+    winnerPlayers: Array<{
+      user_id: string;
+      users: { first_name: string; last_name: string };
+    }>;
+    winnerSide: "left" | "right";
+  } | null>(null);
 
   const wl = useWaitlist();
 
@@ -41,14 +53,34 @@ export default function HomeScreen() {
     onError: (message) => wl.setError(message),
   });
 
-  async function handleEndGame(gameId: string, winnerId: string) {
-    const result = await wl.endGame(gameId, winnerId);
-    if (!result) return;
-
-    if (!result.streak_maxed && wl.data?.activeGame) {
-      await wl.nextGame(gameId, winnerId);
+  async function handleDeclareWinner(gameId: string, winnerId: string) {
+    // Capture the winning team's visual info before the mutation clears it
+    if (wl.data?.activeGame) {
+      const game = wl.data.activeGame;
+      const winnerTeam = game.team1.id === winnerId ? game.team1 : game.team2;
+      // team1 displays on left, team2 on right (DB order = display order)
+      const winnerSide = game.team1.id === winnerId ? "left" : "right";
+      setPendingWinner({
+        winnerColor: winnerTeam.color,
+        winnerPlayers: winnerTeam.team_players,
+        winnerSide,
+      });
     }
+
+    await wl.declareWinner(gameId, winnerId);
   }
+
+  // Clear pendingWinner once real data arrives (active game or staged teams),
+  // preventing the flash to "Waiting for players" between states.
+  useEffect(() => {
+    if (
+      pendingWinner &&
+      !wl.mutating &&
+      (wl.data?.activeGame || (wl.data?.stagedTeams?.length ?? 0) > 0)
+    ) {
+      setPendingWinner(null);
+    }
+  }, [pendingWinner, wl.mutating, wl.data?.activeGame, wl.data?.stagedTeams]);
 
   async function handleScanJoin(waitlistId: string, token: string) {
     try {
@@ -90,7 +122,15 @@ export default function HomeScreen() {
         />
       );
     },
-    [user?.id, wl.data?.upNextCount, editMode, isAdmin, wl.markAbsent, wl.markPresent, wl.markLeft],
+    [
+      user?.id,
+      wl.data?.upNextCount,
+      editMode,
+      isAdmin,
+      wl.markAbsent,
+      wl.markPresent,
+      wl.markLeft,
+    ],
   );
 
   const renderStaticItem = useCallback(
@@ -107,7 +147,14 @@ export default function HomeScreen() {
         onMarkLeft={wl.markLeft}
       />
     ),
-    [user?.id, wl.data?.upNextCount, isAdmin, wl.markAbsent, wl.markPresent, wl.markLeft],
+    [
+      user?.id,
+      wl.data?.upNextCount,
+      isAdmin,
+      wl.markAbsent,
+      wl.markPresent,
+      wl.markLeft,
+    ],
   );
 
   const listHeader = (
@@ -121,70 +168,57 @@ export default function HomeScreen() {
       </View>
 
       {/* Date */}
-      <ThemedText type="subtitle">
-        {wl.data
-          ? formatWaitlistDate(wl.data.waitlist.created_at)
-          : "Loading..."}
-      </ThemedText>
+      {wl.loading ? (
+        <Skeleton width={160} height={32} borderRadius={6} />
+      ) : (
+        <ThemedText type="subtitle">
+          {wl.data
+            ? formatWaitlistDate(wl.data.waitlist.created_at)
+            : "No waitlist"}
+        </ThemedText>
+      )}
 
       {/* Stats */}
-      {wl.data && (
+      {wl.loading ? (
+        <View style={styles.skeletonStats}>
+          <Skeleton width={50} height={32} />
+          <Skeleton width={50} height={32} />
+          <Skeleton width={50} height={32} />
+          <Skeleton width={50} height={32} />
+        </View>
+      ) : wl.data ? (
         <StatsBar
           waitlist={wl.data.waitlist}
           queueCount={wl.data.queue.length}
           playingCount={wl.data.playing.length}
         />
-      )}
+      ) : null}
 
-      {/* On Court */}
-      {wl.data?.activeGame ? (
-        <OnCourtCard
-          activeGame={wl.data.activeGame}
-          streak={wl.data.waitlist.current_streak}
+      {/* Game area: unified card for staged, live, and transition states */}
+      {wl.loading ? (
+        <SkeletonCard />
+      ) : wl.data?.activeGame ||
+        (wl.data?.stagedTeams?.length ?? 0) > 0 ||
+        pendingWinner ? (
+        <GameCard
+          activeGame={wl.data?.activeGame}
+          streak={wl.data?.waitlist.current_streak}
+          streakTeamId={wl.data?.streakTeamId}
+          stagedTeams={wl.data?.stagedTeams}
+          pendingWinner={pendingWinner}
           isAdmin={!!isAdmin}
-          onEndGame={handleEndGame}
+          onDeclareWinner={handleDeclareWinner}
+          onUpdateColor={wl.updateTeamColor}
         />
       ) : wl.data ? (
         <View
-          style={[
-            styles.noGame,
-            { backgroundColor: theme.backgroundElement },
-          ]}
+          style={[styles.noGame, { backgroundColor: theme.backgroundElement }]}
         >
           <ThemedText themeColor="textSecondary">
-            No game in progress
+            Waiting for players to join
           </ThemedText>
         </View>
       ) : null}
-
-      {/* Staged teams */}
-      {wl.data && wl.data.stagedTeams.length > 0 && (
-        <StagedTeams
-          teams={wl.data.stagedTeams}
-          isAdmin={!!isAdmin}
-          onUpdateColor={wl.updateTeamColor}
-          onStartGame={wl.startGame}
-        />
-      )}
-
-      {/* Admin: form team */}
-      {isAdmin && wl.data && (
-        <TouchableOpacity
-          style={[
-            styles.formTeamButton,
-            wl.data.queue.length < 5 && styles.buttonDisabled,
-          ]}
-          onPress={wl.formTeam}
-          disabled={wl.data.queue.length < 5}
-        >
-          <ThemedText
-            style={styles.buttonText}
-            themeColor="background"
-          >
-            Form Team (Next 5)
-          </ThemedText>
-        </TouchableOpacity>
-      )}
 
       {/* Queue header */}
       <View style={styles.sectionHeader}>
@@ -198,9 +232,7 @@ export default function HomeScreen() {
             </ThemedText>
           )}
           {isAdmin && (
-            <TouchableOpacity
-              onPress={() => setEditMode(!editMode)}
-            >
+            <TouchableOpacity onPress={() => setEditMode(!editMode)}>
               <ThemedText type="small" style={styles.editButton}>
                 {editMode ? "Done" : "Edit"}
               </ThemedText>
@@ -208,6 +240,17 @@ export default function HomeScreen() {
           )}
         </View>
       </View>
+
+      {/* Queue skeleton during initial load */}
+      {wl.loading && (
+        <View style={styles.skeletonQueue}>
+          <SkeletonQueueItem />
+          <SkeletonQueueItem />
+          <SkeletonQueueItem />
+          <SkeletonQueueItem />
+          <SkeletonQueueItem />
+        </View>
+      )}
     </View>
   );
 
@@ -229,9 +272,7 @@ export default function HomeScreen() {
 
       {wl.isInQueue && (
         <View style={styles.statusSection}>
-          <ThemedText type="smallBold">
-            You're in the queue!
-          </ThemedText>
+          <ThemedText type="smallBold">You're in the queue!</ThemedText>
           <TouchableOpacity onPress={wl.leave}>
             <ThemedText type="small" style={{ color: "#ef4444" }}>
               Leave Queue
@@ -242,9 +283,7 @@ export default function HomeScreen() {
 
       {wl.isPlaying && (
         <View style={styles.statusSection}>
-          <ThemedText type="smallBold">
-            You're on the court!
-          </ThemedText>
+          <ThemedText type="smallBold">You're on the court!</ThemedText>
         </View>
       )}
     </View>
@@ -316,17 +355,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: Spacing.two,
   },
+  skeletonStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: Spacing.two,
+  },
+  skeletonQueue: {
+    gap: Spacing.one,
+  },
   noGame: {
     padding: Spacing.four,
     borderRadius: 12,
     alignItems: "center",
-  },
-  formTeamButton: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#3c87f7",
-    alignItems: "center",
-    justifyContent: "center",
   },
   buttonText: {
     fontSize: 16,

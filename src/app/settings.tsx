@@ -18,6 +18,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useUser } from "@/lib/user-context";
 import { formatWaitlistDate } from "@/lib/format-date";
 import * as api from "@/lib/api";
+import { posthog } from "@/lib/posthog";
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -79,6 +80,7 @@ export default function SettingsScreen() {
         phone: phone.trim() || undefined,
       });
       await login(updated);
+      posthog.capture("profile_updated");
       setProfileSaved(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
@@ -121,6 +123,7 @@ export default function SettingsScreen() {
     setError("");
     try {
       await api.createWaitlist();
+      posthog.capture("waitlist_created");
       await fetchAdminData();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create waitlist");
@@ -178,9 +181,7 @@ export default function SettingsScreen() {
         >
           <ThemedText type="subtitle">Settings</ThemedText>
 
-          {error ? (
-            <ThemedText style={styles.error}>{error}</ThemedText>
-          ) : null}
+          {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
 
           {/* Profile */}
           <View
@@ -235,10 +236,7 @@ export default function SettingsScreen() {
               keyboardType="phone-pad"
             />
             <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                profileSaved && styles.savedButton,
-              ]}
+              style={[styles.primaryButton, profileSaved && styles.savedButton]}
               onPress={handleSaveProfile}
             >
               <ThemedText style={styles.buttonText} themeColor="background">
@@ -380,7 +378,13 @@ export default function SettingsScreen() {
             <ThemedText type="smallBold" style={styles.sectionLabel}>
               Account
             </ThemedText>
-            <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={() => {
+                posthog.capture("user_logged_out");
+                logout();
+              }}
+            >
               <ThemedText style={styles.logoutText}>Log Out</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity

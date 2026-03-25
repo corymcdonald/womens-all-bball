@@ -1,0 +1,62 @@
+[
+  {
+    "event": "player_registered",
+    "description": "A new player successfully registers an account (first-time sign up)",
+    "file": "src/components/screens/register.tsx"
+  },
+  {
+    "event": "queue_joined",
+    "description": "Player joins the waitlist queue using a passcode (server-side)",
+    "file": "src/app/api/waitlist/[id]/join+api.ts"
+  },
+  {
+    "event": "queue_joined_with_token",
+    "description": "Player joins the waitlist queue using a QR token (server-side)",
+    "file": "src/app/api/waitlist/[id]/join-token+api.ts"
+  },
+  {
+    "event": "queue_rejoined",
+    "description": "Authorized player rejoins the waitlist queue after previously leaving (server-side)",
+    "file": "src/app/api/waitlist/[id]/rejoin+api.ts"
+  },
+  {
+    "event": "queue_left",
+    "description": "Player voluntarily leaves the waitlist queue (server-side)",
+    "file": "src/app/api/waitlist/[id]/leave+api.ts"
+  },
+  {
+    "event": "team_formed",
+    "description": "Admin forms a team from the top players in the queue (server-side)",
+    "file": "src/app/api/waitlist/[id]/form-team+api.ts"
+  },
+  {
+    "event": "game_started",
+    "description": "Admin starts a game between two staged teams (server-side)",
+    "file": "src/app/api/games+api.ts"
+  },
+  {
+    "event": "game_completed",
+    "description": "Admin declares a winner, completing the game (server-side)",
+    "file": "src/app/api/games/[id]/complete+api.ts"
+  },
+  {
+    "event": "player_marked_absent",
+    "description": "Admin marks a player as absent from the session (server-side)",
+    "file": "src/app/api/waitlist/[id]/mark-absent+api.ts"
+  },
+  {
+    "event": "waitlist_created",
+    "description": "Admin creates a new game session waitlist",
+    "file": "src/app/settings.tsx"
+  },
+  {
+    "event": "profile_updated",
+    "description": "Player updates their profile information (name or phone)",
+    "file": "src/app/settings.tsx"
+  },
+  {
+    "event": "user_logged_out",
+    "description": "Player logs out of the app",
+    "file": "src/app/settings.tsx"
+  }
+]

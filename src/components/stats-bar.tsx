@@ -14,10 +14,6 @@ export function StatsBar({ waitlist, queueCount, playingCount }: Props) {
   return (
     <View style={styles.row}>
       <Stat value={`${waitlist.game_duration_minutes}m`} label="Game" />
-      <Stat
-        value={`${waitlist.current_streak}/${waitlist.max_wins}`}
-        label="Streak"
-      />
       <Stat value={`${queueCount}`} label="In Queue" />
       <Stat value={`${playingCount}`} label="Playing" />
     </View>

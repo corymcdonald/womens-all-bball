@@ -40,9 +40,7 @@ const ETIQUETTE = [
 function EtiquetteItem({ emoji, text }: { emoji: string; text: string }) {
   const theme = useTheme();
   return (
-    <View
-      style={[styles.item, { backgroundColor: theme.backgroundElement }]}
-    >
+    <View style={[styles.item, { backgroundColor: theme.backgroundElement }]}>
       <ThemedText style={styles.emoji}>{emoji}</ThemedText>
       <ThemedText style={styles.itemText}>{text}</ThemedText>
     </View>

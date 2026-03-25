@@ -1,9 +1,11 @@
-import { supabase } from "@/lib/supabase";
-import { requireAdmin } from "@/lib/auth";
 import { publishEvent } from "@/lib/ably";
+import { requireAdmin } from "@/lib/auth";
+import { createGame } from "@/lib/services/game-service";
+import { ServiceError } from "@/lib/services/service-error";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   const { waitlist_id, team1_id, team2_id } = await request.json();
 
@@ -14,37 +16,23 @@ export async function POST(request: Request) {
     );
   }
 
-  // Snapshot current waitlist settings onto the game
-  const { data: waitlist } = await supabase
-    .from("waitlists")
-    .select("max_wins, game_duration_minutes")
-    .eq("id", waitlist_id)
-    .single();
-
-  if (!waitlist) {
-    return Response.json({ error: "Waitlist not found" }, { status: 404 });
+  try {
+    const game = await createGame(waitlist_id, team1_id, team2_id);
+    posthogServer?.capture({
+      distinctId: admin.id,
+      event: "game_started",
+      properties: { waitlist_id, game_id: game.id },
+    });
+    await publishEvent(`waitlist:${waitlist_id}`, "game:started", {
+      game_id: game.id,
+    });
+    return Response.json(game, { status: 201 });
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
+    }
+    const msg = e instanceof Error ? e.message : "Internal error";
+    console.error("[api]", msg, e);
+    return Response.json({ error: msg }, { status: 500 });
   }
-
-  const { data, error } = await supabase
-    .from("games")
-    .insert({
-      waitlist_id,
-      team1_id,
-      team2_id,
-      status: "in_progress",
-      max_wins: waitlist.max_wins,
-      game_duration_minutes: waitlist.game_duration_minutes,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  await publishEvent(`waitlist:${waitlist_id}`, "game:started", {
-    game_id: data.id,
-  });
-
-  return Response.json(data, { status: 201 });
 }

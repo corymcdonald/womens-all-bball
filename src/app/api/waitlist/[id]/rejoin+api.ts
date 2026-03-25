@@ -1,7 +1,8 @@
-import { supabase } from "@/lib/supabase";
-import { hasActiveRow } from "@/lib/waitlist";
 import { getUserId } from "@/lib/auth";
-import { publishEvent } from "@/lib/ably";
+import { hasActiveRow } from "@/lib/waitlist";
+import { joinAndAdvance } from "@/lib/services/orchestrator";
+import { ServiceError } from "@/lib/services/service-error";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const userId = getUserId(request);
@@ -9,7 +10,6 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Missing user ID" }, { status: 401 });
   }
 
-  // Check for existing active row - can't rejoin while active
   const activeRow = await hasActiveRow(id, userId);
   if (activeRow) {
     return Response.json(
@@ -18,22 +18,20 @@ export async function POST(request: Request, { id }: { id: string }) {
     );
   }
 
-  // Create a new row (new created_at places them at end of queue)
-  const { data, error } = await supabase
-    .from("waitlist_players")
-    .insert({
-      waitlist_id: id,
-      user_id: userId,
-      status: "waiting",
-    })
-    .select()
-    .single();
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  try {
+    const player = await joinAndAdvance(id, userId);
+    posthogServer?.capture({
+      distinctId: userId,
+      event: "queue_rejoined",
+      properties: { waitlist_id: id },
+    });
+    return Response.json(player, { status: 201 });
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
+    }
+    const msg = e instanceof Error ? e.message : "Internal error";
+    console.error("[api]", msg, e);
+    return Response.json({ error: msg }, { status: 500 });
   }
-
-  await publishEvent(`waitlist:${id}`, "updated");
-
-  return Response.json(data, { status: 201 });
 }

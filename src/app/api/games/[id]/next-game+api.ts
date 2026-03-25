@@ -57,7 +57,7 @@ export async function POST(request: Request, { id }: { id: string }) {
   // Get the waitlist for current settings
   const { data: waitlist } = await supabase
     .from("waitlists")
-    .select("current_streak, max_wins, game_duration_minutes")
+    .select("max_wins, game_duration_minutes")
     .eq("id", prevGame.waitlist_id)
     .single();
 

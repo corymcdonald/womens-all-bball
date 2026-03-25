@@ -175,21 +175,25 @@ Form Team (x2) → Start Game → Tap Winner → End Game → (auto or manual) �
 ```
 
 **Before games start:**
+
 1. Open the **Settings** tab to view/create waitlists and manage the QR code
 2. Toggle **max wins** (2 or 3) and **game duration** (5 or 6 min) based on player count
 3. Show the QR code for players to scan (tap it to go full-screen)
 
 **Starting the first game:**
+
 1. Once enough players have joined, tap **"Form Team"** — takes the next 5 from the queue and assigns a color (defaults to White and Blue, alternating)
 2. Tap **"Form Team"** again for the second team
 3. Both teams appear in the **"Ready to Play"** section. Edit colors if needed.
 4. Tap the green **"Start Game"** button
 
 **During a game:**
+
 - The **"On Court"** section shows both teams with a LIVE indicator
 - All players see this in real-time
 
 **Ending a game:**
+
 1. **Tap the winning team's card** — it highlights with a blue border and "WINNER" badge
 2. Tap the red **"End Game"** button
 3. The system checks the streak:
@@ -199,12 +203,14 @@ Form Team (x2) → Start Game → Tap Winner → End Game → (auto or manual) �
 **Typical game-to-game flow (3 taps):** Tap winner → End Game → Start Game.
 
 **Managing the queue (Edit mode):**
+
 - Tap **"Edit"** next to "Up Next" to show admin controls on each player
 - **Absent** — player is skipped but stays in the queue at their position
 - **Present** — marks an absent player as back
 - **Left** — removes a player from the queue entirely
 
 **Other staff tools (Settings tab):**
+
 - Create new waitlists (auto-generated passcode from basketball terms)
 - Search users and promote them to admin
 - View recent waitlists and passcodes

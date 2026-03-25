@@ -1,31 +1,10 @@
-import { publishEvent } from "@/lib/ably";
 import { requireAdmin } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
-import { transitionStatus } from "@/lib/waitlist";
-
-async function markTeamPlayersCompleted(waitlistId: string, teamId: string) {
-  const { data: players } = await supabase
-    .from("team_players")
-    .select("user_id")
-    .eq("team_id", teamId);
-
-  for (const tp of players ?? []) {
-    const { data: wp } = await supabase
-      .from("waitlist_players")
-      .select("id, status")
-      .eq("waitlist_id", waitlistId)
-      .eq("user_id", tp.user_id)
-      .eq("status", "playing")
-      .single();
-
-    if (wp) {
-      await transitionStatus(wp.id, "playing", "completed");
-    }
-  }
-}
+import { declareWinnerAndAdvance } from "@/lib/services/orchestrator";
+import { ServiceError } from "@/lib/services/service-error";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   const { winner_id } = await request.json();
 
@@ -33,99 +12,32 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "winner_id is required" }, { status: 400 });
   }
 
-  const { data: game } = await supabase
-    .from("games")
-    .select("*")
-    .eq("id", id)
-    .eq("status", "in_progress")
-    .single();
-
-  if (!game) {
-    return Response.json({ error: "Active game not found" }, { status: 404 });
-  }
-
-  if (winner_id !== game.team1_id && winner_id !== game.team2_id) {
+  try {
+    const result = await declareWinnerAndAdvance(id, winner_id);
+    posthogServer?.capture({
+      distinctId: admin.id,
+      event: "game_completed",
+      properties: {
+        game_id: id,
+        winner_team_id: result.winnerId,
+        streak: result.streak,
+      },
+    });
+    return Response.json({
+      game_id: result.gameId,
+      winner_id: result.winnerId,
+      losing_team_id: result.loserId,
+      streak: result.streak,
+      streak_maxed: result.streakMaxed,
+      players_needed: result.playersNeeded,
+    });
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
+    }
     return Response.json(
-      { error: "winner_id must be one of the game's teams" },
-      { status: 400 },
+      { error: e instanceof Error ? e.message : "Failed" },
+      { status: 500 },
     );
   }
-
-  // Mark game as completed
-  const { error: updateError } = await supabase
-    .from("games")
-    .update({ status: "completed", winner_id })
-    .eq("id", id);
-
-  if (updateError) {
-    return Response.json({ error: updateError.message }, { status: 500 });
-  }
-
-  const losingTeamId =
-    winner_id === game.team1_id ? game.team2_id : game.team1_id;
-
-  // Determine streak:
-  // Check the previous completed game for this waitlist to see if the same team is on a streak.
-  // In next-game, the staying team is always placed as team1. So if team1 wins, the staying
-  // team won again and the streak continues. If team2 wins (the challenger), streak resets to 1.
-  const { data: prevGame } = await supabase
-    .from("games")
-    .select("winner_id")
-    .eq("waitlist_id", game.waitlist_id)
-    .eq("status", "completed")
-    .neq("id", id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  const { data: waitlist } = await supabase
-    .from("waitlists")
-    .select("current_streak, max_wins")
-    .eq("id", game.waitlist_id)
-    .single();
-
-  const previousStreak = waitlist?.current_streak ?? 0;
-  const maxWins = game.max_wins;
-
-  // Streak continues only if the staying team (team1) won.
-  // If the challenger (team2) won, or this is the first game, streak starts at 1.
-  const stayingTeamWon = prevGame && winner_id === game.team1_id;
-  const newStreak = stayingTeamWon ? previousStreak + 1 : 1;
-  const streakMaxed = newStreak >= maxWins;
-
-  if (streakMaxed) {
-    // Both teams rotate off
-    await markTeamPlayersCompleted(game.waitlist_id, losingTeamId);
-    await markTeamPlayersCompleted(game.waitlist_id, winner_id);
-
-    await supabase
-      .from("waitlists")
-      .update({ current_streak: 0 })
-      .eq("id", game.waitlist_id);
-  } else {
-    // Only losing team rotates, winning team stays
-    await markTeamPlayersCompleted(game.waitlist_id, losingTeamId);
-
-    await supabase
-      .from("waitlists")
-      .update({ current_streak: newStreak })
-      .eq("id", game.waitlist_id);
-  }
-
-  await publishEvent(`waitlist:${game.waitlist_id}`, "game:completed", {
-    game_id: id,
-    winner_id,
-    streak: newStreak,
-    streak_maxed: streakMaxed,
-    players_needed: streakMaxed ? 10 : 5,
-  });
-
-  return Response.json({
-    game_id: id,
-    winner_id,
-    losing_team_id: losingTeamId,
-    streak: newStreak,
-    streak_maxed: streakMaxed,
-    players_needed: streakMaxed ? 10 : 5,
-  });
 }

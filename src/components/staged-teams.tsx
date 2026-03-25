@@ -19,7 +19,6 @@ type Props = {
   teams: StagedTeam[];
   isAdmin: boolean;
   onUpdateColor: (teamId: string, color: string) => void;
-  onStartGame?: (team1Id: string, team2Id: string) => void;
 };
 
 function TeamCard({
@@ -28,20 +27,27 @@ function TeamCard({
   editingTeamId,
   setEditingTeamId,
   onUpdateColor,
+  align = "left",
 }: {
   team: StagedTeam;
   isAdmin: boolean;
   editingTeamId: string | null;
   setEditingTeamId: (id: string | null) => void;
-  onUpdateColor: (teamId: string, color: string) => void;
+  onUpdateColor?: (teamId: string, color: string) => void;
+  align?: "left" | "right";
 }) {
+  const isRight = align === "right";
   return (
-    <View style={styles.teamCard}>
-      <View style={styles.teamHeader}>
+    <View style={[styles.teamCard, isRight && styles.teamCardRight]}>
+      <View style={[styles.teamHeader, isRight && styles.teamHeaderRight]}>
         <View
           style={[
             styles.colorDot,
             {
+              boxShadow:
+                team.color.toLowerCase() === "white"
+                  ? "0px 0px 1px rgba(0,0,0,1)"
+                  : "",
               backgroundColor:
                 COLOR_VALUES[team.color.toLowerCase()] ??
                 team.color.toLowerCase(),
@@ -63,12 +69,12 @@ function TeamCard({
       </View>
 
       {editingTeamId === team.id && (
-        <View style={styles.colorPicker}>
+        <View style={[styles.colorPicker, isRight && styles.colorPickerRight]}>
           {TEAM_COLORS.map((color) => (
             <TouchableOpacity
               key={color}
               onPress={() => {
-                onUpdateColor(team.id, color);
+                onUpdateColor?.(team.id, color);
                 setEditingTeamId(null);
               }}
               style={[
@@ -89,6 +95,7 @@ function TeamCard({
           key={tp.user_id}
           type="small"
           themeColor="textSecondary"
+          style={isRight && styles.textRight}
         >
           {tp.users.first_name} {tp.users.last_name[0]}.
         </ThemedText>
@@ -97,25 +104,15 @@ function TeamCard({
   );
 }
 
-export function StagedTeams({
-  teams,
-  isAdmin,
-  onUpdateColor,
-  onStartGame,
-}: Props) {
+export function StagedTeams({ teams, isAdmin, onUpdateColor }: Props) {
   const theme = useTheme();
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 
   if (teams.length === 0) return null;
 
-  const canStartGame = isAdmin && teams.length >= 2 && onStartGame;
-
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.backgroundElement },
-      ]}
+      style={[styles.container, { backgroundColor: theme.backgroundElement }]}
     >
       <ThemedText type="smallBold" style={styles.label}>
         Ready to Play
@@ -139,21 +136,11 @@ export function StagedTeams({
               editingTeamId={editingTeamId}
               setEditingTeamId={setEditingTeamId}
               onUpdateColor={onUpdateColor}
+              align="right"
             />
           </>
         )}
       </View>
-
-      {canStartGame && (
-        <TouchableOpacity
-          style={styles.startGameButton}
-          onPress={() => onStartGame(teams[0].id, teams[1].id)}
-        >
-          <ThemedText style={styles.startGameText} themeColor="background">
-            Start Game
-          </ThemedText>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -171,16 +158,26 @@ const styles = StyleSheet.create({
   teamsRow: {
     flexDirection: "row",
     alignItems: "flex-start",
+    justifyContent: "space-between",
   },
   teamCard: {
     flex: 1,
     gap: 4,
+  },
+  teamCardRight: {
+    alignItems: "flex-end",
   },
   teamHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.one,
     marginBottom: 4,
+  },
+  teamHeaderRight: {
+    flexDirection: "row-reverse",
+  },
+  textRight: {
+    textAlign: "right",
   },
   colorDot: {
     width: 12,
@@ -197,13 +194,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     paddingHorizontal: Spacing.two,
-    paddingTop: Spacing.four,
+    alignSelf: "center",
   },
   colorPicker: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.one,
     paddingVertical: Spacing.one,
+  },
+  colorPickerRight: {
+    justifyContent: "flex-end",
   },
   colorOption: {
     width: 28,
@@ -215,16 +215,5 @@ const styles = StyleSheet.create({
   colorOptionSelected: {
     borderColor: "#3c87f7",
     borderWidth: 3,
-  },
-  startGameButton: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#10b981",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  startGameText: {
-    fontSize: 16,
-    fontWeight: "600",
   },
 });

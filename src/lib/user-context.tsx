@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getStoredUser, setStoredUser, clearStoredUser } from "./user-store";
 import { getUser } from "./api";
+import { posthog } from "./posthog";
 
 type User = {
   id: string;
@@ -54,11 +55,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   async function login(userData: User) {
     setUser(userData);
     await setStoredUser(JSON.stringify(userData));
+    posthog.identify(userData.id, {
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      role: userData.role,
+    });
   }
 
   async function logout() {
     setUser(null);
     await clearStoredUser();
+    posthog.reset();
   }
 
   return (

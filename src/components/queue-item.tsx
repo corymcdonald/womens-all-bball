@@ -66,8 +66,7 @@ export function QueueItem({
       )}
 
       <ThemedText style={[styles.name, isAbsent && styles.absentText]}>
-        {item.users.first_name} {item.users.last_name[0]}.
-        {isMe ? " (You)" : ""}
+        {item.users.first_name} {item.users.last_name[0]}.{isMe ? " (You)" : ""}
       </ThemedText>
 
       {/* Self-service: absent player can mark themselves present */}

@@ -8,7 +8,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@expo/ui": "^55.0.5",
@@ -19,13 +21,16 @@
     "ably": "^2.21.0",
     "eas-cli": "^18.4.0",
     "expo": "~55.0.8",
+    "expo-application": "^55.0.10",
     "expo-camera": "^55.0.11",
     "expo-constants": "~55.0.9",
     "expo-device": "~55.0.10",
+    "expo-file-system": "^55.0.11",
     "expo-font": "~55.0.4",
     "expo-glass-effect": "~55.0.8",
     "expo-image": "~55.0.6",
     "expo-linking": "~55.0.8",
+    "expo-localization": "^55.0.9",
     "expo-router": "~55.0.7",
     "expo-secure-store": "^55.0.9",
     "expo-splash-screen": "~55.0.12",
@@ -33,6 +38,8 @@
     "expo-symbols": "~55.0.5",
     "expo-system-ui": "~55.0.10",
     "expo-web-browser": "~55.0.10",
+    "posthog-node": "^5.28.5",
+    "posthog-react-native": "^4.37.6",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
@@ -47,7 +54,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.1"
   },
   "private": true
 }

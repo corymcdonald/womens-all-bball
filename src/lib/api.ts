@@ -2,10 +2,7 @@ import { getStoredUser } from "./user-store";
 
 const API_BASE = "/api";
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const stored = await getStoredUser();
   const userId = stored ? JSON.parse(stored).id : null;
   const headers: Record<string, string> = {
@@ -66,9 +63,7 @@ export function deleteUser(id: string) {
 }
 
 export function searchUsers(query: string) {
-  return request<UserResult[]>(
-    `/users?q=${encodeURIComponent(query)}`,
-  );
+  return request<UserResult[]>(`/users?q=${encodeURIComponent(query)}`);
 }
 
 export function listAdmins() {
@@ -161,6 +156,7 @@ export function getWaitlist(id: string) {
       user_id: string;
       users: { id: string; first_name: string; last_name: string };
     }>;
+    streakTeamId: string | null;
     upNextCount: number;
     stagedTeams: Array<{
       id: string;
@@ -227,7 +223,10 @@ export function markAbsent(
 ) {
   return request(`/waitlist/${id}/mark-absent`, {
     method: "POST",
-    body: JSON.stringify({ waitlist_player_id: waitlistPlayerId, team_id: teamId }),
+    body: JSON.stringify({
+      waitlist_player_id: waitlistPlayerId,
+      team_id: teamId,
+    }),
   });
 }
 
@@ -245,18 +244,14 @@ export function markLeft(
 ) {
   return request(`/waitlist/${id}/mark-left`, {
     method: "POST",
-    body: JSON.stringify({ waitlist_player_id: waitlistPlayerId, team_id: teamId }),
+    body: JSON.stringify({
+      waitlist_player_id: waitlistPlayerId,
+      team_id: teamId,
+    }),
   });
 }
 
-export function formTeam(id: string) {
-  return request(`/waitlist/${id}/form-team`, { method: "POST" });
-}
-
-export function updateTeam(
-  teamId: string,
-  body: { color?: string },
-) {
+export function updateTeam(teamId: string, body: { color?: string }) {
   return request(`/teams/${teamId}`, {
     method: "PATCH",
     body: JSON.stringify(body),
@@ -273,22 +268,7 @@ export function addPlayer(
   });
 }
 
-// Staff - Games
-export function createGame(
-  waitlistId: string,
-  team1Id: string,
-  team2Id: string,
-) {
-  return request("/games", {
-    method: "POST",
-    body: JSON.stringify({
-      waitlist_id: waitlistId,
-      team1_id: team1Id,
-      team2_id: team2Id,
-    }),
-  });
-}
-
+// Games
 export function getGame(id: string) {
   return request(`/games/${id}`);
 }
@@ -304,19 +284,5 @@ export function completeGame(id: string, winnerId: string) {
   }>(`/games/${id}/complete`, {
     method: "POST",
     body: JSON.stringify({ winner_id: winnerId }),
-  });
-}
-
-export function keepTeam(id: string, droppedUserIds?: string[]) {
-  return request(`/games/${id}/keep-team`, {
-    method: "POST",
-    body: JSON.stringify({ dropped_user_ids: droppedUserIds }),
-  });
-}
-
-export function nextGame(id: string, stayingTeamId?: string) {
-  return request(`/games/${id}/next-game`, {
-    method: "POST",
-    body: JSON.stringify(stayingTeamId ? { staying_team_id: stayingTeamId } : {}),
   });
 }

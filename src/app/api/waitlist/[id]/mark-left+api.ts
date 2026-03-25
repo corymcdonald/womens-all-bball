@@ -1,7 +1,8 @@
-import { supabase } from "@/lib/supabase";
-import { requireAdmin } from "@/lib/auth";
-import { transitionStatus, getNextWaitingPlayer } from "@/lib/waitlist";
 import { publishEvent } from "@/lib/ably";
+import { requireAdmin } from "@/lib/auth";
+import { removeFromPlay } from "@/lib/services/queue-service";
+import { checkAndAdvance } from "@/lib/services/orchestrator";
+import { ServiceError } from "@/lib/services/service-error";
 
 export async function POST(request: Request, { id }: { id: string }) {
   await requireAdmin(request);
@@ -15,34 +16,23 @@ export async function POST(request: Request, { id }: { id: string }) {
     );
   }
 
-  const { data: player } = await supabase
-    .from("waitlist_players")
-    .select("*")
-    .eq("id", waitlist_player_id)
-    .eq("waitlist_id", id)
-    .single();
-
-  if (!player) {
-    return Response.json({ error: "Player not found" }, { status: 404 });
-  }
-
-  const leftPlayer = await transitionStatus(player.id, player.status, "left");
-
-  // If the player was playing (injury, etc.) and was on a team, swap in replacement
-  let replacement = null;
-  if (player.status === "playing" && team_id) {
-    const nextPlayer = await getNextWaitingPlayer(id);
-    if (nextPlayer) {
-      replacement = await transitionStatus(nextPlayer.id, "waiting", "playing");
-
-      await supabase.from("team_players").insert({
-        team_id,
-        user_id: nextPlayer.user_id,
-      });
+  try {
+    const result = await removeFromPlay(
+      id,
+      waitlist_player_id,
+      "left",
+      team_id,
+    );
+    await publishEvent(`waitlist:${id}`, "updated");
+    await checkAndAdvance(id);
+    return Response.json(result);
+  } catch (e) {
+    if (e instanceof ServiceError) {
+      return Response.json({ error: e.message }, { status: e.statusCode });
     }
+    return Response.json(
+      { error: e instanceof Error ? e.message : "Failed" },
+      { status: 500 },
+    );
   }
-
-  await publishEvent(`waitlist:${id}`, "updated");
-
-  return Response.json({ leftPlayer, replacement });
 }

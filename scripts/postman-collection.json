@@ -46,9 +46,7 @@
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/users",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"first_name\": \"Alice\",\n  \"last_name\": \"Johnson\",\n  \"phone\": \"5551234567\"\n}"
@@ -60,9 +58,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/users?q=Alice",
-            "header": [
-              { "key": "x-user-id", "value": "{{adminId}}" }
-            ]
+            "header": [{ "key": "x-user-id", "value": "{{adminId}}" }]
           }
         },
         {
@@ -70,9 +66,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/users?role=admin",
-            "header": [
-              { "key": "x-user-id", "value": "{{adminId}}" }
-            ]
+            "header": [{ "key": "x-user-id", "value": "{{adminId}}" }]
           }
         },
         {
@@ -118,9 +112,7 @@
           "request": {
             "method": "DELETE",
             "url": "{{baseUrl}}/api/users/{{userId}}",
-            "header": [
-              { "key": "x-user-id", "value": "{{userId}}" }
-            ]
+            "header": [{ "key": "x-user-id", "value": "{{userId}}" }]
           }
         }
       ]
@@ -156,9 +148,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}",
-            "header": [
-              { "key": "x-user-id", "value": "{{userId}}" }
-            ]
+            "header": [{ "key": "x-user-id", "value": "{{userId}}" }]
           }
         },
         {
@@ -181,9 +171,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/games",
-            "header": [
-              { "key": "x-user-id", "value": "{{userId}}" }
-            ]
+            "header": [{ "key": "x-user-id", "value": "{{userId}}" }]
           }
         }
       ]
