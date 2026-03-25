@@ -157,6 +157,59 @@ Requests should include a `x-user-id` header with the user's UUID for identifica
 | POST   | `/api/games/:id/keep-team`      | Winning team stays on court. Body: `{ dropped_user_ids?: [...] }` (handles replacements)                |
 | POST   | `/api/games/:id/next-game`      | Start next game. Body: `{ staying_team_id }`. Forms challenger team from queue.                         |
 
+## How It Works
+
+### Player Experience
+
+1. **Register** — Open the app, enter your name (phone optional). Your account is saved locally.
+2. **Join the waitlist** — Scan the QR code shown on the staff member's screen, or enter the token manually. You only need to do this once per session — after that, a simple "Join Waitlist" button appears.
+3. **Wait in the queue** — See your position, who's up next, and the current game on court. Pull to refresh or get live updates via Ably.
+4. **Play** — When your name is called (you're in the next 5), you'll be formed into a team and assigned a color automatically. The "On Court" section shows both teams.
+5. **After the game** — If your team lost, you're moved to completed and can tap "Join Waitlist" to rejoin at the end of the queue. If your team won, you may stay on court (depending on streak rules).
+6. **If you're marked absent** — You stay in the queue but are skipped. Tap "I'm here!" to mark yourself present again.
+
+### Staff Workflow
+
+```
+Form Team (x2) → Start Game → Tap Winner → End Game → (auto or manual) → Start Game → ...
+```
+
+**Before games start:**
+1. Open the **Settings** tab to view/create waitlists and manage the QR code
+2. Toggle **max wins** (2 or 3) and **game duration** (5 or 6 min) based on player count
+3. Show the QR code for players to scan (tap it to go full-screen)
+
+**Starting the first game:**
+1. Once enough players have joined, tap **"Form Team"** — takes the next 5 from the queue and assigns a color (defaults to White and Blue, alternating)
+2. Tap **"Form Team"** again for the second team
+3. Both teams appear in the **"Ready to Play"** section. Edit colors if needed.
+4. Tap the green **"Start Game"** button
+
+**During a game:**
+- The **"On Court"** section shows both teams with a LIVE indicator
+- All players see this in real-time
+
+**Ending a game:**
+1. **Tap the winning team's card** — it highlights with a blue border and "WINNER" badge
+2. Tap the red **"End Game"** button
+3. The system checks the streak:
+   - **Streak not maxed:** Losing team rotates off. The system automatically keeps the winning team and forms a new challenger from the queue. Both teams appear as "Ready to Play" — just tap **"Start Game"**.
+   - **Streak maxed:** Both teams rotate off. Tap **"Form Team"** twice to create two new teams, then **"Start Game"**.
+
+**Typical game-to-game flow (3 taps):** Tap winner → End Game → Start Game.
+
+**Managing the queue (Edit mode):**
+- Tap **"Edit"** next to "Up Next" to show admin controls on each player
+- **Absent** — player is skipped but stays in the queue at their position
+- **Present** — marks an absent player as back
+- **Left** — removes a player from the queue entirely
+
+**Other staff tools (Settings tab):**
+- Create new waitlists (auto-generated passcode from basketball terms)
+- Search users and promote them to admin
+- View recent waitlists and passcodes
+- QR code with show/hide token for manual entry
+
 ## Architecture
 
 ```mermaid
@@ -261,16 +314,16 @@ erDiagram
     teams ||--o{ games : "winner"
 ```
 
-### Game Flow
+### Player State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PlayerJoinsQueue: Player enters passcode
+    [*] --> Waiting: Scan QR / enter token
 
     state Queue {
-        PlayerJoinsQueue --> Waiting
         Waiting --> Waiting: Reorder (admin)
         Waiting --> Absent: Admin marks absent
+        Absent --> Waiting: "I'm here!" / Admin marks present
         Waiting --> Left: Player or admin marks left
         Absent --> Left: Leaves entirely
     }
@@ -278,13 +331,30 @@ stateDiagram-v2
     state OnCourt {
         Playing --> Completed: Game ends (loser)
         Playing --> Left: Injury / must leave
-        Playing --> StaysOnCourt: Game ends (winner)
+        Playing --> StaysOnCourt: Game ends (winner, streak not maxed)
+        Playing --> Completed: Game ends (winner, streak maxed)
     }
 
     Waiting --> Playing: Admin forms team (next 5)
     StaysOnCourt --> Playing: Next game starts
     Completed --> Waiting: Player rejoins queue (new row)
     Left --> [*]
+```
+
+### Staff Game Flow
+
+```mermaid
+flowchart TD
+    A[Form Team x2] --> B[Start Game]
+    B --> C{Game in progress}
+    C --> D[Tap winning team]
+    D --> E[End Game]
+    E --> F{Streak maxed?}
+    F -- No --> G[System auto-keeps winner\nand forms challenger from queue]
+    G --> H[Start Game]
+    H --> C
+    F -- Yes --> I[Both teams rotate off]
+    I --> A
 ```
 
 ## Data Model

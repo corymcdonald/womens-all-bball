@@ -3,19 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { getWaitingQueue, transitionStatus } from "@/lib/waitlist";
 
-// Colors that can be assigned to teams
-const TEAM_COLORS = [
-  "Red",
-  "Blue",
-  "Green",
-  "Yellow",
-  "Purple",
-  "Orange",
-  "Pink",
-  "White",
-  "Black",
-  "Gray",
-];
+const DEFAULT_COLORS = ["White", "Blue"] as const;
 
 export async function POST(request: Request, { id }: { id: string }) {
   await requireAdmin(request);
@@ -31,7 +19,8 @@ export async function POST(request: Request, { id }: { id: string }) {
 
   const nextFive = queue.slice(0, 5);
 
-  // Pick a color not currently in use by an active game
+  // Collect all colors currently in use:
+  // 1. Teams in active games for this waitlist
   const { data: activeGames } = await supabase
     .from("games")
     .select(
@@ -40,12 +29,54 @@ export async function POST(request: Request, { id }: { id: string }) {
     .eq("waitlist_id", id)
     .eq("status", "in_progress");
 
-  const usedColors = new Set(
-    (activeGames ?? []).flatMap((g: any) => [g.team1?.color, g.team2?.color]),
-  );
+  const usedColors = new Set<string>();
+  for (const g of activeGames ?? []) {
+    if ((g as any).team1?.color) usedColors.add((g as any).team1.color);
+    if ((g as any).team2?.color) usedColors.add((g as any).team2.color);
+  }
+
+  // 2. Staged teams: players with "playing" status who aren't in an active game
+  const activeTeamIds = new Set<string>();
+  const { data: activeGamesFull } = await supabase
+    .from("games")
+    .select("team1_id, team2_id")
+    .eq("waitlist_id", id)
+    .eq("status", "in_progress");
+
+  for (const g of activeGamesFull ?? []) {
+    activeTeamIds.add(g.team1_id);
+    activeTeamIds.add(g.team2_id);
+  }
+
+  const { data: playingPlayers } = await supabase
+    .from("waitlist_players")
+    .select("user_id")
+    .eq("waitlist_id", id)
+    .eq("status", "playing");
+
+  if (playingPlayers && playingPlayers.length > 0) {
+    // Find which teams these players are on
+    const { data: tps } = await supabase
+      .from("team_players")
+      .select("team_id, teams(color)")
+      .in(
+        "user_id",
+        playingPlayers.map((p) => p.user_id),
+      );
+
+    // Only count colors from teams NOT in an active game (those are staged)
+    const seenTeams = new Set<string>();
+    for (const tp of tps ?? []) {
+      if (!activeTeamIds.has(tp.team_id) && !seenTeams.has(tp.team_id)) {
+        seenTeams.add(tp.team_id);
+        const color = (tp.teams as any)?.color;
+        if (color) usedColors.add(color);
+      }
+    }
+  }
 
   const availableColor =
-    TEAM_COLORS.find((c) => !usedColors.has(c)) ?? TEAM_COLORS[0];
+    DEFAULT_COLORS.find((c) => !usedColors.has(c)) ?? DEFAULT_COLORS[0];
 
   // Create team
   const { data: team, error: teamError } = await supabase
@@ -59,12 +90,12 @@ export async function POST(request: Request, { id }: { id: string }) {
   }
 
   // Add players to team and mark them as playing
-  const teamPlayerInserts = nextFive.map((wp) => ({
-    team_id: team.id,
-    user_id: wp.user_id,
-  }));
-
-  await supabase.from("team_players").insert(teamPlayerInserts);
+  await supabase.from("team_players").insert(
+    nextFive.map((wp) => ({
+      team_id: team.id,
+      user_id: wp.user_id,
+    })),
+  );
 
   for (const wp of nextFive) {
     await transitionStatus(wp.id, "waiting", "playing");

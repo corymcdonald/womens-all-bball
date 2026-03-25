@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 // Valid state transitions for waitlist_players
 const VALID_TRANSITIONS: Record<string, string[]> = {
   waiting: ["playing", "absent", "left"],
-  absent: ["left"],
+  absent: ["left", "waiting"],
   playing: ["completed", "left"],
 };
 
@@ -11,13 +11,13 @@ export function canTransition(from: string, to: string): boolean {
   return VALID_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-// Get the ordered waiting queue for a waitlist
+// Get the ordered queue for a waitlist (waiting + absent players)
 export async function getWaitingQueue(waitlistId: string) {
   const { data, error } = await supabase
     .from("waitlist_players")
     .select("*, users(id, first_name, last_name, phone)")
     .eq("waitlist_id", waitlistId)
-    .eq("status", "waiting")
+    .in("status", ["waiting", "absent"])
     .order("priority", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
 
@@ -25,10 +25,19 @@ export async function getWaitingQueue(waitlistId: string) {
   return data;
 }
 
-// Get the next waiting player (top of queue)
+// Get the next waiting player (top of queue, excluding absent)
 export async function getNextWaitingPlayer(waitlistId: string) {
-  const queue = await getWaitingQueue(waitlistId);
-  return queue[0] ?? null;
+  const { data, error } = await supabase
+    .from("waitlist_players")
+    .select("*, users(id, first_name, last_name, phone)")
+    .eq("waitlist_id", waitlistId)
+    .eq("status", "waiting")
+    .order("priority", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (error) throw error;
+  return data[0] ?? null;
 }
 
 // Check if a user has an active row in a waitlist

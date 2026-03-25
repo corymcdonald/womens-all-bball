@@ -1,0 +1,467 @@
+{
+  "info": {
+    "name": "Women's All B-Ball API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "adminId",
+      "value": "REPLACE_WITH_ADMIN_USER_ID"
+    },
+    {
+      "key": "userId",
+      "value": "REPLACE_WITH_USER_ID"
+    },
+    {
+      "key": "waitlistId",
+      "value": "REPLACE_WITH_WAITLIST_ID"
+    },
+    {
+      "key": "passcode",
+      "value": "REPLACE_WITH_PASSCODE"
+    },
+    {
+      "key": "gameId",
+      "value": "REPLACE_WITH_GAME_ID"
+    },
+    {
+      "key": "teamId",
+      "value": "REPLACE_WITH_TEAM_ID"
+    },
+    {
+      "key": "waitlistPlayerId",
+      "value": "REPLACE_WITH_WAITLIST_PLAYER_ID"
+    }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Users > Register User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/users",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Alice\",\n  \"last_name\": \"Johnson\",\n  \"phone\": \"5551234567\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Users > Search Users (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users?q=Alice",
+            "header": [
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ]
+          }
+        },
+        {
+          "name": "Users > List Admins",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users?role=admin",
+            "header": [
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ]
+          }
+        },
+        {
+          "name": "Users > Get User",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "header": []
+          }
+        },
+        {
+          "name": "Users > Update User Profile",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Alice\",\n  \"last_name\": \"Smith\",\n  \"phone\": \"5559999999\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Users > Promote User to Admin",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Users > Delete Account (Anonymize)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "header": [
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Waitlists",
+      "item": [
+        {
+          "name": "Waitlists > List All",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/waitlist",
+            "header": []
+          }
+        },
+        {
+          "name": "Waitlists > Create Waitlist (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Waitlists > Get Waitlist (Queue + Game)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}",
+            "header": [
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ]
+          }
+        },
+        {
+          "name": "Waitlists > Update Settings (Admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"max_wins\": 3,\n  \"game_duration_minutes\": 6\n}"
+            }
+          }
+        },
+        {
+          "name": "Waitlists > List Games for Waitlist",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/games",
+            "header": [
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queue - Player Actions",
+      "item": [
+        {
+          "name": "Queue > Join with Passcode",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/join",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passcode\": \"{{passcode}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Queue > Join with Token (QR Scan)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/join-token",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"REPLACE_WITH_TOKEN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Queue > Leave",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/leave",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ]
+          }
+        },
+        {
+          "name": "Queue > Rejoin",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/rejoin",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{userId}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queue - Admin Actions",
+      "item": [
+        {
+          "name": "Queue > Generate Join Token (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/token",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ]
+          }
+        },
+        {
+          "name": "Queue > Add Player (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/add-player",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Walk-in\",\n  \"last_name\": \"Player\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Queue > Reorder (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/reorder",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"player_ids\": [\"id1\", \"id2\", \"id3\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Queue > Mark Absent (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/mark-absent",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"waitlist_player_id\": \"{{waitlistPlayerId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Queue > Mark Present (Admin/Player)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/mark-present",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"waitlist_player_id\": \"{{waitlistPlayerId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Queue > Mark Left (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/mark-left",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"waitlist_player_id\": \"{{waitlistPlayerId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Queue > Form Team (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/waitlist/{{waitlistId}}/form-team",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "Teams > Get Team",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/teams/{{teamId}}",
+            "header": []
+          }
+        },
+        {
+          "name": "Teams > Update Team (Admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/teams/{{teamId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"color\": \"Purple\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Games",
+      "item": [
+        {
+          "name": "Games > Create Game (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/games",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"waitlist_id\": \"{{waitlistId}}\",\n  \"team1_id\": \"REPLACE_WITH_TEAM1_ID\",\n  \"team2_id\": \"REPLACE_WITH_TEAM2_ID\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Games > Get Game",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/games/{{gameId}}",
+            "header": []
+          }
+        },
+        {
+          "name": "Games > Complete Game (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/games/{{gameId}}/complete",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"winner_id\": \"{{teamId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Games > Keep Team on Court (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/games/{{gameId}}/keep-team",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dropped_user_ids\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Games > Next Game - Winning Team Stays (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/games/{{gameId}}/next-game",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"staying_team_id\": \"{{teamId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Games > Next Game - Full Rotation (Admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/games/{{gameId}}/next-game",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-user-id", "value": "{{adminId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -3,18 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getWaitingQueue, transitionStatus } from "@/lib/waitlist";
 import { publishEvent } from "@/lib/ably";
 
-const TEAM_COLORS = [
-  "Red",
-  "Blue",
-  "Green",
-  "Yellow",
-  "Purple",
-  "Orange",
-  "Pink",
-  "White",
-  "Black",
-  "Gray",
-];
+const DEFAULT_COLORS = ["White", "Blue"] as const;
 
 async function formTeamFromQueue(
   waitlistId: string,
@@ -22,7 +11,7 @@ async function formTeamFromQueue(
   excludeColors: string[],
 ) {
   const color =
-    TEAM_COLORS.find((c) => !excludeColors.includes(c)) ?? TEAM_COLORS[0];
+    DEFAULT_COLORS.find((c) => !excludeColors.includes(c)) ?? DEFAULT_COLORS[0];
 
   const { data: team } = await supabase
     .from("teams")

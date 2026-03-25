@@ -1,7 +1,7 @@
+import { publishEvent } from "@/lib/ably";
+import { getUserId } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { hasActiveRow } from "@/lib/waitlist";
-import { getUserId } from "@/lib/auth";
-import { publishEvent } from "@/lib/ably";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const userId = getUserId(request);

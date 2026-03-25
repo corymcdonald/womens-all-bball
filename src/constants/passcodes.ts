@@ -1,7 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
-
-const PASSCODES = [
+export const PASSCODES = [
   "DRIBBLE",
   "PASS",
   "SHOOT",
@@ -103,23 +100,3 @@ const PASSCODES = [
   "HALFCOURT",
   "RESTRICTEDAREA",
 ];
-
-export async function POST(request: Request) {
-  await requireAdmin(request);
-
-  const body = await request.json().catch(() => ({}));
-  const passcode =
-    body.passcode ?? PASSCODES[Math.floor(Math.random() * PASSCODES.length)];
-
-  const { data, error } = await supabase
-    .from("waitlists")
-    .insert({ passcode })
-    .select()
-    .single();
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  return Response.json(data, { status: 201 });
-}

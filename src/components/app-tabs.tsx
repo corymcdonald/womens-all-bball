@@ -3,10 +3,12 @@ import React from "react";
 import { useColorScheme } from "react-native";
 
 import { Colors } from "@/constants/theme";
+import { useUser } from "@/lib/user-context";
 
 export default function AppTabs() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === "unspecified" ? "light" : scheme];
+  const { user } = useUser();
 
   return (
     <NativeTabs
@@ -16,18 +18,22 @@ export default function AppTabs() {
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require("@/assets/images/tabIcons/home.png")}
-          renderingMode="template"
-        />
+        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="rules">
-        <NativeTabs.Trigger.Label>rules</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require("@/assets/images/tabIcons/explore.png")}
-          renderingMode="template"
-        />
+        <NativeTabs.Trigger.Label>Rules</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="list.clipboard.fill" md="assignment" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="culture">
+        <NativeTabs.Trigger.Label>Culture</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="heart.fill" md="favorite" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="settings" hidden={!user}>
+        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

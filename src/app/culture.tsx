@@ -6,60 +6,50 @@ import { ThemedView } from "@/components/themed-view";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
-const RULES = [
+const ETIQUETTE = [
   {
-    emoji: "📋",
-    text: "When you arrive, sign in on both the registration clipboard and the whiteboard",
-  },
-  { emoji: "🏀", text: "Full-court 5v5" },
-  {
-    emoji: "⏱️",
-    text: "6-min running clock (5 min if 25+ players)",
+    emoji: "🏀",
+    text: "Our priority is fun, inclusivity, and community — women, trans, non-binary hoopers are invited to play",
   },
   {
-    emoji: "✋",
-    text: "Call your own fouls — honor system, call it loud",
+    emoji: "😊",
+    text: "Our goal is to have fun, get exercise, and make friends. Community > competitiveness",
   },
   {
-    emoji: "🔄",
-    text: "Winners stay on\n< 20 players: max 3 games\n20+ players: max 2 games",
-  },
-  { emoji: "🎯", text: "Made a 3? Tell the scorekeeper" },
-  {
-    emoji: "⚖️",
-    text: "Ties: 1-min OT, then 1st basket wins (sudden death)",
-  },
-  {
-    emoji: "📝",
-    text: "If you lose, return to the table to re-sign up if you want to keep playing",
-  },
-  {
-    emoji: "⏭️",
-    text: "No future sign-ups while you're still on the court",
+    emoji: "🤝",
+    text: "All skill and fitness levels are welcome",
   },
   {
     emoji: "🚫",
-    text: "No team picking/creating — first come, first serve",
+    text: "No overly physical play — we aim to prevent injuries",
   },
   {
-    emoji: "👕",
-    text: 'Loaner jerseys available! Put them in the "dirty" bag when you are done',
+    emoji: "➡️",
+    text: "If you're seeking highly competitive play, please check out other runs or leagues",
+  },
+  {
+    emoji: "❤️",
+    text: "Be kind and respectful to everyone, including our volunteers",
+  },
+  {
+    emoji: "✋",
+    text: "Interested in volunteering? We always appreciate help — especially with scorekeeping when you're sitting out",
   },
 ];
 
-function RuleItem({ emoji, text }: { emoji: string; text: string }) {
+function EtiquetteItem({ emoji, text }: { emoji: string; text: string }) {
   const theme = useTheme();
   return (
     <View
-      style={[styles.ruleItem, { backgroundColor: theme.backgroundElement }]}
+      style={[styles.item, { backgroundColor: theme.backgroundElement }]}
     >
       <ThemedText style={styles.emoji}>{emoji}</ThemedText>
-      <ThemedText style={styles.ruleText}>{text}</ThemedText>
+      <ThemedText style={styles.itemText}>{text}</ThemedText>
     </View>
   );
 }
 
-export default function RulesScreen() {
+export default function CultureScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -68,11 +58,11 @@ export default function RulesScreen() {
           showsVerticalScrollIndicator={false}
         >
           <ThemedText type="title" style={styles.sectionTitle}>
-            Format & Rules
+            Etiquette & Culture
           </ThemedText>
 
-          {RULES.map((rule, i) => (
-            <RuleItem key={i} emoji={rule.emoji} text={rule.text} />
+          {ETIQUETTE.map((item, i) => (
+            <EtiquetteItem key={i} emoji={item.emoji} text={item.text} />
           ))}
         </ScrollView>
       </SafeAreaView>
@@ -96,7 +86,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
     marginBottom: Spacing.one,
   },
-  ruleItem: {
+  item: {
     flexDirection: "row",
     alignItems: "flex-start",
     padding: Spacing.two,
@@ -107,7 +97,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 30,
   },
-  ruleText: {
+  itemText: {
     flex: 1,
     fontSize: 15,
     lineHeight: 22,

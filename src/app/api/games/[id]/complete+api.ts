@@ -1,7 +1,7 @@
-import { supabase } from "@/lib/supabase";
-import { requireAdmin } from "@/lib/auth";
-import { transitionStatus } from "@/lib/waitlist";
 import { publishEvent } from "@/lib/ably";
+import { requireAdmin } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
+import { transitionStatus } from "@/lib/waitlist";
 
 async function markTeamPlayersCompleted(waitlistId: string, teamId: string) {
   const { data: players } = await supabase
@@ -33,7 +33,6 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "winner_id is required" }, { status: 400 });
   }
 
-  // Get the game
   const { data: game } = await supabase
     .from("games")
     .select("*")
@@ -65,19 +64,37 @@ export async function POST(request: Request, { id }: { id: string }) {
   const losingTeamId =
     winner_id === game.team1_id ? game.team2_id : game.team1_id;
 
-  // Get the waitlist to check streak
+  // Determine streak:
+  // Check the previous completed game for this waitlist to see if the same team is on a streak.
+  // In next-game, the staying team is always placed as team1. So if team1 wins, the staying
+  // team won again and the streak continues. If team2 wins (the challenger), streak resets to 1.
+  const { data: prevGame } = await supabase
+    .from("games")
+    .select("winner_id")
+    .eq("waitlist_id", game.waitlist_id)
+    .eq("status", "completed")
+    .neq("id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
   const { data: waitlist } = await supabase
     .from("waitlists")
     .select("current_streak, max_wins")
     .eq("id", game.waitlist_id)
     .single();
 
-  const currentStreak = (waitlist?.current_streak ?? 0) + 1;
-  const maxWins = game.max_wins; // use the snapshotted value from the game
-  const streakMaxed = currentStreak >= maxWins;
+  const previousStreak = waitlist?.current_streak ?? 0;
+  const maxWins = game.max_wins;
+
+  // Streak continues only if the staying team (team1) won.
+  // If the challenger (team2) won, or this is the first game, streak starts at 1.
+  const stayingTeamWon = prevGame && winner_id === game.team1_id;
+  const newStreak = stayingTeamWon ? previousStreak + 1 : 1;
+  const streakMaxed = newStreak >= maxWins;
 
   if (streakMaxed) {
-    // Both teams rotate off — mark all players as completed, reset streak
+    // Both teams rotate off
     await markTeamPlayersCompleted(game.waitlist_id, losingTeamId);
     await markTeamPlayersCompleted(game.waitlist_id, winner_id);
 
@@ -86,19 +103,19 @@ export async function POST(request: Request, { id }: { id: string }) {
       .update({ current_streak: 0 })
       .eq("id", game.waitlist_id);
   } else {
-    // Only losing team rotates — winning team stays, increment streak
+    // Only losing team rotates, winning team stays
     await markTeamPlayersCompleted(game.waitlist_id, losingTeamId);
 
     await supabase
       .from("waitlists")
-      .update({ current_streak: currentStreak })
+      .update({ current_streak: newStreak })
       .eq("id", game.waitlist_id);
   }
 
   await publishEvent(`waitlist:${game.waitlist_id}`, "game:completed", {
     game_id: id,
     winner_id,
-    streak: currentStreak,
+    streak: newStreak,
     streak_maxed: streakMaxed,
     players_needed: streakMaxed ? 10 : 5,
   });
@@ -107,7 +124,7 @@ export async function POST(request: Request, { id }: { id: string }) {
     game_id: id,
     winner_id,
     losing_team_id: losingTeamId,
-    streak: currentStreak,
+    streak: newStreak,
     streak_maxed: streakMaxed,
     players_needed: streakMaxed ? 10 : 5,
   });
