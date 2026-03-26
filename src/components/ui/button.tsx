@@ -1,12 +1,7 @@
 import { StyleSheet, TouchableOpacity, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import {
-  BorderRadius,
-  ButtonHeight,
-  SemanticColors,
-  Spacing,
-} from "@/constants/theme";
+import { BorderRadius, ButtonHeight, SemanticColors } from "@/constants/theme";
 
 type Variant = "primary" | "outline" | "danger";
 

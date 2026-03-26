@@ -17,12 +17,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { GameCard } from "@/components/game/game-card";
 import { JoinSection } from "@/components/join/join-section";
 import { QueueItem, type QueuePlayer } from "@/components/queue/queue-item";
+import { StatsBar } from "@/components/queue/stats-bar";
 import {
   Skeleton,
   SkeletonCard,
   SkeletonQueueItem,
 } from "@/components/skeleton";
-import { StatsBar } from "@/components/queue/stats-bar";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import {

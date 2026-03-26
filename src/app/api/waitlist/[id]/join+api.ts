@@ -28,10 +28,10 @@ async function validatePasscode(
   const body = await request.json();
   const passcode = body?.passcode;
   if (!passcode) {
-    throw new Response(
-      JSON.stringify({ error: "Passcode is required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
+    throw new Response(JSON.stringify({ error: "Passcode is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const { data: waitlist } = await supabase
@@ -41,17 +41,17 @@ async function validatePasscode(
     .single();
 
   if (!waitlist) {
-    throw new Response(
-      JSON.stringify({ error: "Waitlist not found" }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
-    );
+    throw new Response(JSON.stringify({ error: "Waitlist not found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   if (waitlist.passcode.toLowerCase() !== passcode.toLowerCase()) {
-    throw new Response(
-      JSON.stringify({ error: "Invalid passcode" }),
-      { status: 403, headers: { "Content-Type": "application/json" } },
-    );
+    throw new Response(JSON.stringify({ error: "Invalid passcode" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
 

@@ -1,14 +1,6 @@
-import {
-  StyleSheet,
-  TextInput,
-  type TextInputProps,
-} from "react-native";
+import { StyleSheet, TextInput, type TextInputProps } from "react-native";
 
-import {
-  BorderRadius,
-  InputHeight,
-  Spacing,
-} from "@/constants/theme";
+import { BorderRadius, InputHeight, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 type Props = Omit<TextInputProps, "style"> & {

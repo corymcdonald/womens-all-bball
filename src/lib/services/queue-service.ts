@@ -40,7 +40,11 @@ async function swapReplacement(waitlistId: string, teamId: string) {
   const nextPlayer = await getNextWaitingPlayer(waitlistId);
   if (!nextPlayer) return null;
 
-  const replacement = await transitionStatus(nextPlayer.id, "waiting", "playing");
+  const replacement = await transitionStatus(
+    nextPlayer.id,
+    "waiting",
+    "playing",
+  );
   await supabase.from("team_players").insert({
     team_id: teamId,
     user_id: nextPlayer.user_id,
@@ -79,7 +83,9 @@ export async function removeFromPlay(
     (targetStatus === "absent" && player.status === "waiting" && teamId) ||
     (targetStatus === "left" && player.status === "playing" && teamId);
 
-  const replacement = shouldReplace ? await swapReplacement(waitlistId, teamId!) : null;
+  const replacement = shouldReplace
+    ? await swapReplacement(waitlistId, teamId!)
+    : null;
 
   return { transitioned, replacement };
 }

@@ -1,18 +1,13 @@
 import { useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
-import { Skeleton } from "@/components/skeleton";
 import { ColorPicker } from "@/components/game/color-picker";
 import { TeamView, styles as teamStyles } from "@/components/game/team-view";
-import { COLOR_VALUES } from "@/constants/team-colors";
-import { BorderRadius, SemanticColors, Spacing } from "@/constants/theme";
+import { Skeleton } from "@/components/skeleton";
+import { ThemedText } from "@/components/themed-text";
+import { SemanticColors, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-import type {
-  ActiveGame,
-  StagedTeam,
-  TeamPlayer,
-} from "@/lib/types";
+import type { ActiveGame, StagedTeam, TeamPlayer } from "@/lib/types";
 
 type Props = {
   activeGame?: ActiveGame | null;
@@ -68,7 +63,6 @@ function SkeletonTeam({ align = "left" }: { align?: "left" | "right" }) {
     </View>
   );
 }
-
 
 // ─── Main component ───
 

@@ -6,12 +6,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { ThemedText } from "@/components/themed-text";
 import { Button } from "@/components/ui/button";
 import { StyledTextInput } from "@/components/ui/text-input";
-import {
-  BorderRadius,
-  ButtonHeight,
-  SemanticColors,
-  Spacing,
-} from "@/constants/theme";
+import { BorderRadius, Spacing } from "@/constants/theme";
 
 type Props = {
   isAuthorized: boolean;
@@ -72,10 +67,7 @@ export function JoinSection({
 
   if (isAuthorized) {
     return (
-      <Button
-        label="Join Waitlist"
-        onPress={() => requireAuth(onQuickJoin)}
-      />
+      <Button label="Join Waitlist" onPress={() => requireAuth(onQuickJoin)} />
     );
   }
 

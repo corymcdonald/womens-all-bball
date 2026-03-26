@@ -10,12 +10,18 @@ export async function POST(request: Request, { id }: { id: string }) {
   const { user_id, first_name, last_name } = await request.json();
 
   try {
-    const targetUserId = await resolveTargetUserId(user_id, first_name, last_name);
+    const targetUserId = await resolveTargetUserId(
+      user_id,
+      first_name,
+      last_name,
+    );
 
     const activeRow = await hasActiveRow(id, targetUserId);
     if (activeRow) {
       return Response.json(
-        { error: `Player already in waitlist with status: ${activeRow.status}` },
+        {
+          error: `Player already in waitlist with status: ${activeRow.status}`,
+        },
         { status: 409 },
       );
     }
@@ -24,7 +30,11 @@ export async function POST(request: Request, { id }: { id: string }) {
     posthogServer?.capture({
       distinctId: admin.id,
       event: "player_added_by_admin",
-      properties: { waitlist_id: id, target_user_id: targetUserId, created_new_user: !user_id },
+      properties: {
+        waitlist_id: id,
+        target_user_id: targetUserId,
+        created_new_user: !user_id,
+      },
     });
     return Response.json(player, { status: 201 });
   } catch (e) {

@@ -119,6 +119,7 @@ Then press:
 The app has a two-tier authentication system:
 
 ### Guest users
+
 - Register with just a first name and last name (email optional)
 - Stored in Supabase `users` table with `clerk_id = null`
 - Identified by `x-user-id` header (client-set, not cryptographically verified)
@@ -126,6 +127,7 @@ The app has a two-tier authentication system:
 - Account is tied to the device's local storage
 
 ### Full users (Clerk-linked)
+
 - Guest users can promote to full accounts via **Settings > Link Full Account**
 - Creates a Clerk account (email + password) and links `clerk_id` to the existing Supabase user
 - Admin endpoints require a verified Clerk JWT (`Authorization: Bearer <token>`)
@@ -134,14 +136,14 @@ The app has a two-tier authentication system:
 
 ### What requires which auth level
 
-| Action | Auth level |
-|--------|-----------|
+| Action                      | Auth level                      |
+| --------------------------- | ------------------------------- |
 | View waitlist, queue, games | None (read-only guest browsing) |
-| Join/leave waitlist | Guest (x-user-id) |
-| Update own profile | Guest (x-user-id) |
-| Link Clerk account | Clerk JWT (verified) |
-| Delete linked account | Clerk JWT (verified) |
-| All admin actions | Clerk JWT + admin role |
+| Join/leave waitlist         | Guest (x-user-id)               |
+| Update own profile          | Guest (x-user-id)               |
+| Link Clerk account          | Clerk JWT (verified)            |
+| Delete linked account       | Clerk JWT (verified)            |
+| All admin actions           | Clerk JWT + admin role          |
 
 ## API Endpoints
 
@@ -149,40 +151,40 @@ All API routes are served by Expo Router's API routes from `src/app/api/`.
 
 ### User endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/users` | Register a guest user. Body: `{ first_name, last_name, email? }`. With Clerk JWT + `clerk_id`, creates a linked user. |
-| GET | `/api/users/:id` | View user profile |
-| PATCH | `/api/users/:id` | Update profile (self), link Clerk account (JWT required), or change role (admin) |
-| DELETE | `/api/users/:id` | Anonymize account. Linked accounts require Clerk JWT; guest accounts use x-user-id. |
-| GET | `/api/users?clerk_id=xxx` | Look up user by Clerk ID (requires JWT proving ownership) |
-| GET | `/api/users?q=name` | Search users by name (admin only) |
-| GET | `/api/users?role=admin` | List admins (admin only) |
+| Method | Endpoint                  | Description                                                                                                           |
+| ------ | ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/users`              | Register a guest user. Body: `{ first_name, last_name, email? }`. With Clerk JWT + `clerk_id`, creates a linked user. |
+| GET    | `/api/users/:id`          | View user profile                                                                                                     |
+| PATCH  | `/api/users/:id`          | Update profile (self), link Clerk account (JWT required), or change role (admin)                                      |
+| DELETE | `/api/users/:id`          | Anonymize account. Linked accounts require Clerk JWT; guest accounts use x-user-id.                                   |
+| GET    | `/api/users?clerk_id=xxx` | Look up user by Clerk ID (requires JWT proving ownership)                                                             |
+| GET    | `/api/users?q=name`       | Search users by name (admin only)                                                                                     |
+| GET    | `/api/users?role=admin`   | List admins (admin only)                                                                                              |
 
 ### Player endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/waitlist/:id` | View the waitlist: queue, active game, up next, streak info |
-| POST | `/api/waitlist/:id/join` | Join the waitlist. Body: `{ passcode }`. Returning players skip passcode. |
-| POST | `/api/waitlist/:id/join-token` | Join via a time-limited token. Body: `{ token }` |
-| POST | `/api/waitlist/:id/leave` | Leave the waitlist (waiting/absent players only) |
-| POST | `/api/waitlist/:id/mark-present` | Mark yourself present (self-service for absent players, or admin via JWT) |
-| GET | `/api/games` | List completed games with team details, paginated |
+| Method | Endpoint                         | Description                                                               |
+| ------ | -------------------------------- | ------------------------------------------------------------------------- |
+| GET    | `/api/waitlist/:id`              | View the waitlist: queue, active game, up next, streak info               |
+| POST   | `/api/waitlist/:id/join`         | Join the waitlist. Body: `{ passcode }`. Returning players skip passcode. |
+| POST   | `/api/waitlist/:id/join-token`   | Join via a time-limited token. Body: `{ token }`                          |
+| POST   | `/api/waitlist/:id/leave`        | Leave the waitlist (waiting/absent players only)                          |
+| POST   | `/api/waitlist/:id/mark-present` | Mark yourself present (self-service for absent players, or admin via JWT) |
+| GET    | `/api/games`                     | List completed games with team details, paginated                         |
 
 ### Admin endpoints (require Clerk JWT + admin role)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/waitlist` | Create a new waitlist with auto-generated passcode |
-| PATCH | `/api/waitlist/:id` | Update settings (max_wins, game_duration_minutes) |
-| POST | `/api/waitlist/:id/token` | Generate a time-limited join token |
-| POST | `/api/waitlist/:id/add-player` | Add a player. Body: `{ user_id }` or `{ first_name, last_name }` |
-| POST | `/api/waitlist/:id/reorder` | Reorder the queue. Body: `{ player_ids: [...] }` |
-| POST | `/api/waitlist/:id/form-team` | Form a team from the next 5 in queue |
-| POST | `/api/waitlist/:id/mark-absent` | Mark player absent. Body: `{ waitlist_player_id, team_id? }` |
-| POST | `/api/waitlist/:id/mark-left` | Mark player as left. Body: `{ waitlist_player_id, team_id? }` |
-| POST | `/api/games/:id/complete` | End a game. Body: `{ winner_id }` |
+| Method | Endpoint                        | Description                                                      |
+| ------ | ------------------------------- | ---------------------------------------------------------------- |
+| POST   | `/api/waitlist`                 | Create a new waitlist with auto-generated passcode               |
+| PATCH  | `/api/waitlist/:id`             | Update settings (max_wins, game_duration_minutes)                |
+| POST   | `/api/waitlist/:id/token`       | Generate a time-limited join token                               |
+| POST   | `/api/waitlist/:id/add-player`  | Add a player. Body: `{ user_id }` or `{ first_name, last_name }` |
+| POST   | `/api/waitlist/:id/reorder`     | Reorder the queue. Body: `{ player_ids: [...] }`                 |
+| POST   | `/api/waitlist/:id/form-team`   | Form a team from the next 5 in queue                             |
+| POST   | `/api/waitlist/:id/mark-absent` | Mark player absent. Body: `{ waitlist_player_id, team_id? }`     |
+| POST   | `/api/waitlist/:id/mark-left`   | Mark player as left. Body: `{ waitlist_player_id, team_id? }`    |
+| POST   | `/api/games/:id/complete`       | End a game. Body: `{ winner_id }`                                |
 
 ## How It Works
 

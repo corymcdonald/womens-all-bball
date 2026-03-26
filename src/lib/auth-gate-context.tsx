@@ -226,7 +226,7 @@ function ClerkSignInWrapper({
     if (clerkUser?.id) {
       onSignedIn(clerkUser.id);
     }
-  }, [clerkUser?.id]);
+  }, [clerkUser?.id, onSignedIn]);
 
   return <AuthScreen onDismiss={onDismiss} />;
 }

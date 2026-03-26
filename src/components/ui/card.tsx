@@ -13,11 +13,7 @@ export function Card({ children, style }: Props) {
 
   return (
     <View
-      style={[
-        styles.card,
-        { backgroundColor: theme.backgroundElement },
-        style,
-      ]}
+      style={[styles.card, { backgroundColor: theme.backgroundElement }, style]}
     >
       {children}
     </View>
