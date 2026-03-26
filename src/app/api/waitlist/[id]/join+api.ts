@@ -5,10 +5,6 @@ import { joinAndAdvance } from "@/lib/services/orchestrator";
 import { handleRouteError } from "@/lib/api-error";
 import { posthogServer } from "@/lib/posthog-server";
 
-/**
- * Check if the user has any previous (inactive) row in this waitlist,
- * meaning they were previously invited and don't need the passcode again.
- */
 async function hasPreviousRow(
   waitlistId: string,
   userId: string,
@@ -25,6 +21,40 @@ async function hasPreviousRow(
   return data.length > 0;
 }
 
+async function validatePasscode(
+  request: Request,
+  waitlistId: string,
+): Promise<void> {
+  const body = await request.json();
+  const passcode = body?.passcode;
+  if (!passcode) {
+    throw new Response(
+      JSON.stringify({ error: "Passcode is required" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { data: waitlist } = await supabase
+    .from("waitlists")
+    .select("id, passcode")
+    .eq("id", waitlistId)
+    .single();
+
+  if (!waitlist) {
+    throw new Response(
+      JSON.stringify({ error: "Waitlist not found" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (waitlist.passcode.toLowerCase() !== passcode.toLowerCase()) {
+    throw new Response(
+      JSON.stringify({ error: "Invalid passcode" }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+}
+
 export async function POST(request: Request, { id }: { id: string }) {
   const userId = getUserId(request);
   if (!userId) {
@@ -39,29 +69,9 @@ export async function POST(request: Request, { id }: { id: string }) {
     );
   }
 
-  // Skip passcode validation for returning players (previously invited)
   const previouslyJoined = await hasPreviousRow(id, userId);
-
   if (!previouslyJoined) {
-    const body = await request.json();
-    const passcode = body?.passcode;
-    if (!passcode) {
-      return Response.json({ error: "Passcode is required" }, { status: 400 });
-    }
-
-    const { data: waitlist } = await supabase
-      .from("waitlists")
-      .select("id, passcode")
-      .eq("id", id)
-      .single();
-
-    if (!waitlist) {
-      return Response.json({ error: "Waitlist not found" }, { status: 404 });
-    }
-
-    if (waitlist.passcode.toLowerCase() !== passcode.toLowerCase()) {
-      return Response.json({ error: "Invalid passcode" }, { status: 403 });
-    }
+    await validatePasscode(request, id);
   }
 
   try {

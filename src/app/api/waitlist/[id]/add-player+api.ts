@@ -1,56 +1,30 @@
 import { requireAdmin } from "@/lib/auth";
-import { joinAndAdvance } from "@/lib/services/orchestrator";
 import { handleRouteError } from "@/lib/api-error";
-import { supabase } from "@/lib/supabase";
+import { joinAndAdvance } from "@/lib/services/orchestrator";
+import { resolveTargetUserId } from "@/lib/services/user-service";
 import { hasActiveRow } from "@/lib/waitlist";
 import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const admin = await requireAdmin(request);
-
   const { user_id, first_name, last_name } = await request.json();
 
-  let targetUserId = user_id;
+  try {
+    const targetUserId = await resolveTargetUserId(user_id, first_name, last_name);
 
-  if (!targetUserId) {
-    if (!first_name || !last_name) {
+    const activeRow = await hasActiveRow(id, targetUserId);
+    if (activeRow) {
       return Response.json(
-        { error: "Either user_id or first_name and last_name are required" },
-        { status: 400 },
+        { error: `Player already in waitlist with status: ${activeRow.status}` },
+        { status: 409 },
       );
     }
 
-    const { data: newUser, error: userError } = await supabase
-      .from("users")
-      .insert({ first_name, last_name })
-      .select()
-      .single();
-
-    if (userError || !newUser) {
-      return Response.json({ error: "Failed to create user" }, { status: 500 });
-    }
-
-    targetUserId = newUser.id;
-  }
-
-  const activeRow = await hasActiveRow(id, targetUserId);
-  if (activeRow) {
-    return Response.json(
-      { error: `Player already in waitlist with status: ${activeRow.status}` },
-      { status: 409 },
-    );
-  }
-
-  try {
     const player = await joinAndAdvance(id, targetUserId);
     posthogServer?.capture({
       distinctId: admin.id,
       event: "player_added_by_admin",
-      properties: {
-        waitlist_id: id,
-        target_user_id: targetUserId,
-        created_new_user: !user_id,
-      },
+      properties: { waitlist_id: id, target_user_id: targetUserId, created_new_user: !user_id },
     });
     return Response.json(player, { status: 201 });
   } catch (e) {

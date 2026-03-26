@@ -3,6 +3,19 @@ import { getWaitingQueue } from "@/lib/waitlist";
 import { getStreak } from "./streak";
 import type { TeamPlayer, WaitlistDetail } from "@/lib/types";
 
+function isStreakTeamActive(
+  teamId: string | null,
+  stagedTeams: { id: string }[],
+  currentGame: { team1: { id: string }; team2: { id: string } } | null,
+): boolean {
+  if (!teamId) return false;
+  if (stagedTeams.some((t) => t.id === teamId)) return true;
+  if (currentGame) {
+    return currentGame.team1.id === teamId || currentGame.team2.id === teamId;
+  }
+  return false;
+}
+
 function mapTeamPlayers(
   raw: { user_id: string; users: { id: string; first_name: string; last_name: string } }[] | null,
 ): TeamPlayer[] {
@@ -71,15 +84,9 @@ export async function getWaitlistDetail(
   const { streak: rawStreak, teamId: rawStreakTeamId } =
     await getStreak(waitlistId);
 
-  const streakTeamStillActive =
-    rawStreakTeamId &&
-    (stagedTeams.some((t) => t.id === rawStreakTeamId) ||
-      (currentGame &&
-        (currentGame.team1.id === rawStreakTeamId ||
-          currentGame.team2.id === rawStreakTeamId)));
-
-  const streak = streakTeamStillActive ? rawStreak : 0;
-  const streakTeamId = streakTeamStillActive ? rawStreakTeamId : null;
+  const active = isStreakTeamActive(rawStreakTeamId, stagedTeams, currentGame);
+  const streak = active ? rawStreak : 0;
+  const streakTeamId = active ? rawStreakTeamId : null;
   const streakMaxed = streak >= waitlist.max_wins;
   const upNextCount = streakMaxed ? 10 : 5;
 

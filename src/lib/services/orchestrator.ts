@@ -17,6 +17,44 @@ import {
 } from "./team-service";
 
 /**
+ * Preserve the staying team's display position from the previous game.
+ * Winner stays in the same slot (team1=left, team2=right) for the next game.
+ */
+async function determineTeamPositions(
+  waitlistId: string,
+  stagedTeams: { id: string; color: string; created_at: string }[],
+): Promise<{ team1Id: string; team2Id: string }> {
+  const { data: prevGame } = await supabase
+    .from("games")
+    .select("team1_id, team2_id, winner_id")
+    .eq("waitlist_id", waitlistId)
+    .eq("status", "completed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  let team1Id = stagedTeams[0].id;
+  let team2Id = stagedTeams[1].id;
+
+  if (prevGame?.winner_id) {
+    const stayingTeam = stagedTeams.find((t) => t.id === prevGame.winner_id);
+    const challengerTeam = stagedTeams.find((t) => t.id !== prevGame.winner_id);
+
+    if (stayingTeam && challengerTeam) {
+      if (prevGame.winner_id === prevGame.team1_id) {
+        team1Id = stayingTeam.id;
+        team2Id = challengerTeam.id;
+      } else {
+        team1Id = challengerTeam.id;
+        team2Id = stayingTeam.id;
+      }
+    }
+  }
+
+  return { team1Id, team2Id };
+}
+
+/**
  * Internal implementation — runs inside the lock.
  * Evaluates state and takes the single appropriate next action,
  * then recurses once if a team was formed (to check if we can now start a game).
@@ -40,40 +78,10 @@ async function advance(waitlistId: string): Promise<void> {
     await transitionTeamStatus(stagedTeams[0].id, "playing");
     await transitionTeamStatus(stagedTeams[1].id, "playing");
 
-    // Preserve the staying team's display position from the previous game.
-    // Look up which position (team1=left, team2=right) the winner held,
-    // and keep them in the same slot for the next game.
-    const { data: prevGame } = await supabase
-      .from("games")
-      .select("team1_id, team2_id, winner_id")
-      .eq("waitlist_id", waitlistId)
-      .eq("status", "completed")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let team1Id = stagedTeams[0].id;
-    let team2Id = stagedTeams[1].id;
-
-    if (prevGame?.winner_id) {
-      // The staying team is the one that was in the previous game (winner)
-      const stayingTeam = stagedTeams.find((t) => t.id === prevGame.winner_id);
-      const challengerTeam = stagedTeams.find(
-        (t) => t.id !== prevGame.winner_id,
-      );
-
-      if (stayingTeam && challengerTeam) {
-        if (prevGame.winner_id === prevGame.team1_id) {
-          // Winner was team1 (left) → stays left
-          team1Id = stayingTeam.id;
-          team2Id = challengerTeam.id;
-        } else {
-          // Winner was team2 (right) → stays right
-          team1Id = challengerTeam.id;
-          team2Id = stayingTeam.id;
-        }
-      }
-    }
+    const { team1Id, team2Id } = await determineTeamPositions(
+      waitlistId,
+      stagedTeams,
+    );
 
     const game = await createGame(waitlistId, team1Id, team2Id);
     await publishEvent(`waitlist:${waitlistId}`, "game:started", {
