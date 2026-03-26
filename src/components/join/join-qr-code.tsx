@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Spacing } from "@/constants/theme";
+import { SemanticColors, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import * as api from "@/lib/api";
 
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   toggleText: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
   },
   tokenBox: {
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   closeText: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
     fontSize: 16,
   },

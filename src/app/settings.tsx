@@ -5,7 +5,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -14,9 +13,13 @@ import { useAuth, useUser as useClerkUser } from "@clerk/expo";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { JoinQRCode } from "@/components/join-qr-code";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ErrorText } from "@/components/ui/error-text";
+import { StyledTextInput } from "@/components/ui/text-input";
+import { JoinQRCode } from "@/components/join/join-qr-code";
 import AuthScreen from "@/components/screens/auth";
-import { Spacing, WebNavHeight } from "@/constants/theme";
+import { SemanticColors, Spacing, WebNavHeight } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useUser } from "@/lib/user-context";
 import { formatWaitlistDate } from "@/lib/format-date";
@@ -223,25 +226,16 @@ export default function SettingsScreen() {
         >
           <ThemedText type="subtitle">Settings</ThemedText>
 
-          {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+          <ErrorText message={error} />
 
           {/* Profile */}
-          <View
-            style={[
-              styles.section,
-              { backgroundColor: theme.backgroundElement },
-            ]}
-          >
+          <Card>
             <ThemedText type="smallBold" style={styles.sectionLabel}>
               Profile
             </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                { color: theme.text, backgroundColor: theme.background },
-              ]}
+            <StyledTextInput
+              style={{ backgroundColor: theme.background }}
               placeholder="First name"
-              placeholderTextColor={theme.textSecondary}
               value={firstName}
               onChangeText={(t) => {
                 setFirstName(t);
@@ -249,13 +243,9 @@ export default function SettingsScreen() {
               }}
               autoCapitalize="words"
             />
-            <TextInput
-              style={[
-                styles.input,
-                { color: theme.text, backgroundColor: theme.background },
-              ]}
+            <StyledTextInput
+              style={{ backgroundColor: theme.background }}
               placeholder="Last name"
-              placeholderTextColor={theme.textSecondary}
               value={lastName}
               onChangeText={(t) => {
                 setLastName(t);
@@ -263,13 +253,9 @@ export default function SettingsScreen() {
               }}
               autoCapitalize="words"
             />
-            <TextInput
-              style={[
-                styles.input,
-                { color: theme.text, backgroundColor: theme.background },
-              ]}
+            <StyledTextInput
+              style={{ backgroundColor: theme.background }}
               placeholder="Email"
-              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={(t) => {
                 setEmail(t);
@@ -279,24 +265,16 @@ export default function SettingsScreen() {
               autoCapitalize="none"
               autoComplete="email"
             />
-            <TouchableOpacity
-              style={[styles.primaryButton, profileSaved && styles.savedButton]}
+            <Button
+              label={profileSaved ? "Saved!" : "Save Changes"}
               onPress={handleSaveProfile}
-            >
-              <ThemedText style={styles.buttonText} themeColor="background">
-                {profileSaved ? "Saved!" : "Save Changes"}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
+              style={profileSaved ? { backgroundColor: SemanticColors.success } : undefined}
+            />
+          </Card>
 
           {/* Admin: QR Code */}
           {isAdmin && latestWaitlist && (
-            <View
-              style={[
-                styles.section,
-                { backgroundColor: theme.backgroundElement },
-              ]}
-            >
+            <Card>
               <ThemedText type="smallBold" style={styles.sectionLabel}>
                 Current Session —{" "}
                 {formatWaitlistDate(latestWaitlist.created_at)}
@@ -308,28 +286,19 @@ export default function SettingsScreen() {
                 waitlistId={latestWaitlist.id}
                 scheme="womensallbball"
               />
-            </View>
+            </Card>
           )}
 
           {/* Admin: Waitlists */}
           {isAdmin && (
-            <View
-              style={[
-                styles.section,
-                { backgroundColor: theme.backgroundElement },
-              ]}
-            >
+            <Card>
               <ThemedText type="smallBold" style={styles.sectionLabel}>
                 Waitlists
               </ThemedText>
-              <TouchableOpacity
-                style={styles.primaryButton}
+              <Button
+                label="Create New Waitlist"
                 onPress={handleCreateWaitlist}
-              >
-                <ThemedText style={styles.buttonText} themeColor="background">
-                  Create New Waitlist
-                </ThemedText>
-              </TouchableOpacity>
+              />
 
               {waitlists.slice(0, 5).map((w) => (
                 <View key={w.id} style={styles.listRow}>
@@ -341,17 +310,12 @@ export default function SettingsScreen() {
                   </ThemedText>
                 </View>
               ))}
-            </View>
+            </Card>
           )}
 
           {/* Admin: Manage Admins */}
           {isAdmin && (
-            <View
-              style={[
-                styles.section,
-                { backgroundColor: theme.backgroundElement },
-              ]}
-            >
+            <Card>
               <ThemedText type="smallBold" style={styles.sectionLabel}>
                 Admins
               </ThemedText>
@@ -374,13 +338,9 @@ export default function SettingsScreen() {
               >
                 Add Admin
               </ThemedText>
-              <TextInput
-                style={[
-                  styles.input,
-                  { color: theme.text, backgroundColor: theme.background },
-                ]}
+              <StyledTextInput
+                style={{ backgroundColor: theme.background }}
                 placeholder="Search by name..."
-                placeholderTextColor={theme.textSecondary}
                 value={adminSearch}
                 onChangeText={handleAdminSearch}
                 autoCapitalize="words"
@@ -409,28 +369,19 @@ export default function SettingsScreen() {
                   )}
                 </View>
               ))}
-            </View>
+            </Card>
           )}
 
           {/* Account */}
-          <View
-            style={[
-              styles.section,
-              { backgroundColor: theme.backgroundElement },
-            ]}
-          >
+          <Card>
             <ThemedText type="smallBold" style={styles.sectionLabel}>
               Account
             </ThemedText>
             {!user.clerk_id && (
-              <TouchableOpacity
-                style={styles.primaryButton}
+              <Button
+                label="Link Full Account"
                 onPress={() => setShowLinkModal(true)}
-              >
-                <ThemedText style={styles.buttonText} themeColor="background">
-                  Link Full Account
-                </ThemedText>
-              </TouchableOpacity>
+              />
             )}
             {user.clerk_id && (
               <View style={styles.linkedBadge}>
@@ -439,19 +390,17 @@ export default function SettingsScreen() {
                 </ThemedText>
               </View>
             )}
-            <TouchableOpacity
-              style={styles.logoutButton}
+            <Button
+              label="Log Out"
+              variant="outline"
               onPress={handleLogout}
-            >
-              <ThemedText style={styles.logoutText}>Log Out</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteButton}
+            />
+            <Button
+              label="Delete Account"
+              variant="danger"
               onPress={handleDeleteAccount}
-            >
-              <ThemedText style={styles.deleteText}>Delete Account</ThemedText>
-            </TouchableOpacity>
-          </View>
+            />
+          </Card>
         </ScrollView>
       </SafeAreaView>
 
@@ -484,38 +433,9 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.six,
     gap: Spacing.three,
   },
-  error: {
-    color: "#ef4444",
-    textAlign: "center",
-  },
-  section: {
-    padding: Spacing.three,
-    borderRadius: 12,
-    gap: Spacing.two,
-  },
   sectionLabel: {
     textTransform: "uppercase",
     letterSpacing: 1,
-  },
-  input: {
-    height: 44,
-    borderRadius: 10,
-    paddingHorizontal: Spacing.three,
-    fontSize: 15,
-  },
-  primaryButton: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#3c87f7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  savedButton: {
-    backgroundColor: "#10b981",
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
   },
   listRow: {
     flexDirection: "row",
@@ -529,7 +449,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   adminBadge: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "700",
     fontSize: 11,
   },
@@ -537,34 +457,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "rgba(60, 135, 247, 0.15)",
+    backgroundColor: `${SemanticColors.primary}26`,
   },
   promoteText: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
-  },
-  logoutButton: {
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(128, 128, 128, 0.3)",
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  deleteButton: {
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteText: {
-    color: "#ef4444",
-    fontSize: 16,
-    fontWeight: "500",
   },
   linkedBadge: {
     height: 44,
@@ -572,6 +469,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#10b981",
+    borderColor: SemanticColors.success,
   },
 });

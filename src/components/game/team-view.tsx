@@ -2,7 +2,7 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { COLOR_VALUES } from "@/constants/team-colors";
-import { Spacing } from "@/constants/theme";
+import { SemanticColors, Spacing } from "@/constants/theme";
 import type { TeamPlayer } from "@/lib/types";
 
 export type { TeamPlayer } from "@/lib/types";
@@ -129,7 +129,7 @@ export const styles = StyleSheet.create({
     borderColor: "rgba(128, 128, 128, 0.2)",
   },
   teamCardSelected: {
-    borderColor: "#3c87f7",
+    borderColor: SemanticColors.primary,
   },
   teamCardRight: {
     alignItems: "flex-end",
@@ -160,7 +160,7 @@ export const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   selectIndicatorSelected: {
-    backgroundColor: "#3c87f7",
+    backgroundColor: SemanticColors.primary,
   },
   selectIndicatorRight: {
     alignSelf: "flex-end",

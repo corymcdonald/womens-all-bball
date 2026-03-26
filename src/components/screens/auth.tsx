@@ -1,22 +1,23 @@
+import { useSignIn, useSignUp } from "@clerk/expo";
 import { useState } from "react";
 import {
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSignIn, useSignUp } from "@clerk/expo";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
-import { useUser } from "@/lib/user-context";
+import { Button } from "@/components/ui/button";
+import { ErrorText } from "@/components/ui/error-text";
+import { StyledTextInput } from "@/components/ui/text-input";
+import { SemanticColors, Spacing } from "@/constants/theme";
 import { registerUser } from "@/lib/api";
 import { posthog } from "@/lib/posthog";
+import { useUser } from "@/lib/user-context";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -58,7 +59,6 @@ function SignInForm({
   onSwitchMode: () => void;
   onDismiss?: () => void;
 }) {
-  const theme = useTheme();
   const { signIn } = useSignIn();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -208,16 +208,8 @@ function SignInForm({
             </ThemedText>
 
             <ThemedView style={styles.form}>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: theme.text,
-                    backgroundColor: theme.backgroundElement,
-                  },
-                ]}
+              <StyledTextInput
                 placeholder="Verification code"
-                placeholderTextColor={theme.textSecondary}
                 value={resetCode}
                 onChangeText={setResetCode}
                 keyboardType="number-pad"
@@ -225,29 +217,14 @@ function SignInForm({
               />
             </ThemedView>
 
-            {error ? (
-              <ThemedText style={styles.error}>{error}</ThemedText>
-            ) : null}
+            <ErrorText message={error} />
 
-            <TouchableOpacity
-              style={[
-                styles.button,
-                (!resetCode.trim() || submitting) && styles.buttonDisabled,
-              ]}
+            <Button
+              label={submitting ? "Verifying..." : "Verify Code"}
               onPress={handleVerifyResetCode}
               disabled={!resetCode.trim() || submitting}
-            >
-              <ThemedText
-                style={styles.buttonText}
-                themeColor={
-                  resetCode.trim() && !submitting
-                    ? "background"
-                    : "textSecondary"
-                }
-              >
-                {submitting ? "Verifying..." : "Verify Code"}
-              </ThemedText>
-            </TouchableOpacity>
+              style={styles.buttonMargin}
+            />
 
             <TouchableOpacity
               onPress={() => {
@@ -285,16 +262,8 @@ function SignInForm({
             </ThemedText>
 
             <ThemedView style={styles.form}>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: theme.text,
-                    backgroundColor: theme.backgroundElement,
-                  },
-                ]}
+              <StyledTextInput
                 placeholder="New password"
-                placeholderTextColor={theme.textSecondary}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
@@ -302,22 +271,14 @@ function SignInForm({
               />
             </ThemedView>
 
-            {error ? (
-              <ThemedText style={styles.error}>{error}</ThemedText>
-            ) : null}
+            <ErrorText message={error} />
 
-            <TouchableOpacity
-              style={[styles.button, !canReset && styles.buttonDisabled]}
+            <Button
+              label={submitting ? "Resetting..." : "Reset Password"}
               onPress={handleSubmitNewPassword}
               disabled={!canReset}
-            >
-              <ThemedText
-                style={styles.buttonText}
-                themeColor={canReset ? "background" : "textSecondary"}
-              >
-                {submitting ? "Resetting..." : "Reset Password"}
-              </ThemedText>
-            </TouchableOpacity>
+              style={styles.buttonMargin}
+            />
           </SafeAreaView>
         </KeyboardAvoidingView>
       </ThemedView>
@@ -340,16 +301,8 @@ function SignInForm({
           </ThemedText>
 
           <ThemedView style={styles.form}>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="Email"
-              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -357,16 +310,8 @@ function SignInForm({
               keyboardType="email-address"
               autoComplete="email"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="Password"
-              placeholderTextColor={theme.textSecondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -374,20 +319,14 @@ function SignInForm({
             />
           </ThemedView>
 
-          {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+          <ErrorText message={error} />
 
-          <TouchableOpacity
-            style={[styles.button, !canSubmit && styles.buttonDisabled]}
+          <Button
+            label={submitting ? "Signing in..." : "Sign In"}
             onPress={handleSignIn}
             disabled={!canSubmit}
-          >
-            <ThemedText
-              style={styles.buttonText}
-              themeColor={canSubmit ? "background" : "textSecondary"}
-            >
-              {submitting ? "Signing in..." : "Sign In"}
-            </ThemedText>
-          </TouchableOpacity>
+            style={styles.buttonMargin}
+          />
 
           <TouchableOpacity onPress={handleForgotPassword}>
             <ThemedText type="small" style={styles.linkText}>
@@ -424,7 +363,6 @@ function SignUpForm({
   onDismiss?: () => void;
   linkOnly?: boolean;
 }) {
-  const theme = useTheme();
   const { signUp } = useSignUp();
   const { login } = useUser();
   const [email, setEmail] = useState("");
@@ -506,46 +444,22 @@ function SignUpForm({
           </ThemedText>
 
           <ThemedView style={styles.form}>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="First name"
-              placeholderTextColor={theme.textSecondary}
               value={firstName}
               onChangeText={setFirstName}
               autoCapitalize="words"
               autoComplete="given-name"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="Last name"
-              placeholderTextColor={theme.textSecondary}
               value={lastName}
               onChangeText={setLastName}
               autoCapitalize="words"
               autoComplete="family-name"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="Email"
-              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -553,16 +467,8 @@ function SignUpForm({
               keyboardType="email-address"
               autoComplete="email"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="Password (min 8 characters)"
-              placeholderTextColor={theme.textSecondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -570,20 +476,14 @@ function SignUpForm({
             />
           </ThemedView>
 
-          {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+          <ErrorText message={error} />
 
-          <TouchableOpacity
-            style={[styles.button, !canSubmit && styles.buttonDisabled]}
+          <Button
+            label={submitting ? "Creating account..." : "Create Account"}
             onPress={handleSignUp}
             disabled={!canSubmit}
-          >
-            <ThemedText
-              style={styles.buttonText}
-              themeColor={canSubmit ? "background" : "textSecondary"}
-            >
-              {submitting ? "Creating account..." : "Create Account"}
-            </ThemedText>
-          </TouchableOpacity>
+            style={styles.buttonMargin}
+          />
 
           <View style={styles.switchRow}>
             <ThemedText themeColor="textSecondary">
@@ -628,30 +528,8 @@ const styles = StyleSheet.create({
   form: {
     gap: Spacing.two,
   },
-  input: {
-    height: 48,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    fontSize: 16,
-  },
-  error: {
-    color: "#ef4444",
-    textAlign: "center",
-  },
-  button: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: "#3c87f7",
-    alignItems: "center",
-    justifyContent: "center",
+  buttonMargin: {
     marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.4,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
   },
   switchRow: {
     flexDirection: "row",
@@ -660,7 +538,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   linkText: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
   },
   cancelButton: {

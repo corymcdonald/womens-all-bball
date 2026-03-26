@@ -8,32 +8,37 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import DraggableFlatList, {
   type RenderItemParams,
 } from "react-native-draggable-flatlist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { GameCard } from "@/components/game-card";
-import { StatsBar } from "@/components/stats-bar";
-import { QueueItem, type QueuePlayer } from "@/components/queue-item";
-import { JoinSection } from "@/components/join-section";
+import { GameCard } from "@/components/game/game-card";
+import { JoinSection } from "@/components/join/join-section";
+import { QueueItem, type QueuePlayer } from "@/components/queue/queue-item";
 import {
   Skeleton,
   SkeletonCard,
   SkeletonQueueItem,
 } from "@/components/skeleton";
-import { Spacing, WebNavHeight } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
+import { StatsBar } from "@/components/queue/stats-bar";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import {
+  BorderRadius,
+  SemanticColors,
+  Spacing,
+  WebNavHeight,
+} from "@/constants/theme";
 import { useJoinDeepLink } from "@/hooks/use-join-deeplink";
-import { useUser } from "@/lib/user-context";
-import { useAuthGate } from "@/lib/auth-gate-context";
+import { useTheme } from "@/hooks/use-theme";
 import { useWaitlist } from "@/hooks/use-waitlist";
-import { formatWaitlistDate } from "@/lib/format-date";
-import { addAuthorizedWaitlist } from "@/lib/user-store";
 import * as api from "@/lib/api";
+import { useAuthGate } from "@/lib/auth-gate-context";
+import { formatWaitlistDate } from "@/lib/format-date";
+import { useUser } from "@/lib/user-context";
+import { addAuthorizedWaitlist } from "@/lib/user-store";
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -288,7 +293,7 @@ export default function HomeScreen() {
         <View style={styles.statusSection}>
           <ThemedText type="smallBold">{"You're in the queue!"}</ThemedText>
           <TouchableOpacity onPress={wl.leave}>
-            <ThemedText type="small" style={{ color: "#ef4444" }}>
+            <ThemedText type="small" style={{ color: SemanticColors.error }}>
               Leave Queue
             </ThemedText>
           </TouchableOpacity>
@@ -385,15 +390,8 @@ const styles = StyleSheet.create({
   },
   noGame: {
     padding: Spacing.four,
-    borderRadius: 12,
+    borderRadius: BorderRadius.large,
     alignItems: "center",
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buttonDisabled: {
-    opacity: 0.4,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -410,11 +408,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   editButton: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
   },
   signInLink: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
   },
   separator: {
@@ -425,14 +423,14 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   error: {
-    color: "#ef4444",
+    color: SemanticColors.error,
     textAlign: "center",
   },
   statusSection: {
     alignItems: "center",
     gap: Spacing.one,
     padding: Spacing.three,
-    borderRadius: 12,
-    backgroundColor: "rgba(60, 135, 247, 0.15)",
+    borderRadius: BorderRadius.large,
+    backgroundColor: `${SemanticColors.primary}26`,
   },
 });

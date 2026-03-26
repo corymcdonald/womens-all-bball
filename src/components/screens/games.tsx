@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { GameResultCard } from "@/components/game-result-card";
+import { GameResultCard } from "@/components/game/game-result-card";
 import { SkeletonCard } from "@/components/skeleton";
 import { Spacing, WebNavHeight } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";

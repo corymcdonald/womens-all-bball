@@ -1,7 +1,8 @@
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { Spacing } from "@/constants/theme";
+import { Badge } from "@/components/ui/badge";
+import { BorderRadius, SemanticColors, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 export type QueuePlayer = {
@@ -82,17 +83,11 @@ export function QueueItem({
       )}
 
       {/* Badge for other absent players */}
-      {isAbsent && !isMe && (
-        <ThemedText type="small" style={styles.absentBadge}>
-          ABSENT
-        </ThemedText>
-      )}
+      {isAbsent && !isMe && <Badge label="ABSENT" color="warning" />}
 
       {/* Up next badge */}
       {isUpNext && !isAbsent && !editMode && (
-        <ThemedText type="small" style={styles.upNextBadge}>
-          UP NEXT
-        </ThemedText>
+        <Badge label="UP NEXT" color="primary" />
       )}
 
       {/* Admin edit controls */}
@@ -103,7 +98,10 @@ export function QueueItem({
               onPress={() => onMarkAbsent(item.id)}
               style={styles.absentButton}
             >
-              <ThemedText type="small" style={{ color: "#f59e0b" }}>
+              <ThemedText
+                type="small"
+                style={{ color: SemanticColors.warning }}
+              >
                 Absent
               </ThemedText>
             </TouchableOpacity>
@@ -112,7 +110,10 @@ export function QueueItem({
               onPress={() => onMarkPresent(item.id)}
               style={styles.presentButton}
             >
-              <ThemedText type="small" style={{ color: "#10b981" }}>
+              <ThemedText
+                type="small"
+                style={{ color: SemanticColors.success }}
+              >
                 Present
               </ThemedText>
             </TouchableOpacity>
@@ -121,7 +122,7 @@ export function QueueItem({
             onPress={() => onMarkLeft(item.id)}
             style={styles.leftButton}
           >
-            <ThemedText type="small" style={{ color: "#ef4444" }}>
+            <ThemedText type="small" style={{ color: SemanticColors.error }}>
               Left
             </ThemedText>
           </TouchableOpacity>
@@ -136,21 +137,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: Spacing.two,
-    borderRadius: 10,
+    borderRadius: BorderRadius.medium,
     gap: Spacing.two,
   },
   upNext: {
     borderLeftWidth: 3,
-    borderLeftColor: "#3c87f7",
+    borderLeftColor: SemanticColors.primary,
   },
   myRow: {
     borderRightWidth: 3,
-    borderRightColor: "#10b981",
+    borderRightColor: SemanticColors.success,
   },
   absentRow: {
     opacity: 0.5,
     borderLeftWidth: 3,
-    borderLeftColor: "#f59e0b",
+    borderLeftColor: SemanticColors.warning,
   },
   activeRow: {
     opacity: 0.9,
@@ -180,24 +181,14 @@ const styles = StyleSheet.create({
   absentText: {
     textDecorationLine: "line-through",
   },
-  upNextBadge: {
-    color: "#3c87f7",
-    fontWeight: "700",
-    fontSize: 11,
-  },
-  absentBadge: {
-    color: "#f59e0b",
-    fontWeight: "700",
-    fontSize: 11,
-  },
   imHereButton: {
     paddingHorizontal: Spacing.two,
     paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderRadius: BorderRadius.small,
+    backgroundColor: `${SemanticColors.success}26`,
   },
   imHereText: {
-    color: "#10b981",
+    color: SemanticColors.success,
     fontWeight: "700",
   },
   adminActions: {
@@ -207,19 +198,19 @@ const styles = StyleSheet.create({
   absentButton: {
     paddingHorizontal: Spacing.one,
     paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    borderRadius: BorderRadius.small,
+    backgroundColor: `${SemanticColors.warning}26`,
   },
   presentButton: {
     paddingHorizontal: Spacing.one,
     paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderRadius: BorderRadius.small,
+    backgroundColor: `${SemanticColors.success}26`,
   },
   leftButton: {
     paddingHorizontal: Spacing.one,
     paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    borderRadius: BorderRadius.small,
+    backgroundColor: `${SemanticColors.error}26`,
   },
 });

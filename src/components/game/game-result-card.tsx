@@ -1,9 +1,9 @@
 import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { TeamView } from "@/components/team-view";
+import { TeamView } from "@/components/game/team-view";
+import { Card } from "@/components/ui/card";
 import { Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
 import { type GameWithStreak } from "@/hooks/use-games";
 
 type Props = {
@@ -12,8 +12,6 @@ type Props = {
 };
 
 export function GameResultCard({ game, userId }: Props) {
-  const theme = useTheme();
-
   // Keep teams in DB positions (team1=left, team2=right) — same as home screen
   const team1Record =
     game.winner_id === game.team1.id ? `${game.winnerStreak}-0` : undefined;
@@ -21,9 +19,7 @@ export function GameResultCard({ game, userId }: Props) {
     game.winner_id === game.team2.id ? `${game.winnerStreak}-0` : undefined;
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: theme.backgroundElement }]}
-    >
+    <Card>
       <View style={styles.teamsRow}>
         <TeamView
           color={game.team1.color}
@@ -42,15 +38,11 @@ export function GameResultCard({ game, userId }: Props) {
           highlightUserId={userId}
         />
       </View>
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: Spacing.three,
-    borderRadius: 12,
-  },
   teamsRow: {
     flexDirection: "row",
     alignItems: "flex-start",

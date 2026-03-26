@@ -11,17 +11,18 @@ import {
   Modal,
   Platform,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { Button } from "@/components/ui/button";
+import { StyledTextInput } from "@/components/ui/text-input";
+import { ErrorText } from "@/components/ui/error-text";
 import { useUser as useClerkUser } from "@clerk/expo";
 import AuthScreen from "@/components/screens/auth";
-import { Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
+import { SemanticColors, Spacing } from "@/constants/theme";
 import { useUser } from "@/lib/user-context";
 import { registerUser, getUserByClerkId } from "@/lib/api";
 import { posthog } from "@/lib/posthog";
@@ -116,7 +117,6 @@ function RegisterForm({
   onSwitchToSignIn: () => void;
   onRegister: (user: User) => Promise<void>;
 }) {
-  const theme = useTheme();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -160,46 +160,22 @@ function RegisterForm({
           </ThemedText>
 
           <View style={styles.form}>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="First name"
-              placeholderTextColor={theme.textSecondary}
               value={firstName}
               onChangeText={setFirstName}
               autoCapitalize="words"
               autoComplete="given-name"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="Last name"
-              placeholderTextColor={theme.textSecondary}
               value={lastName}
               onChangeText={setLastName}
               autoCapitalize="words"
               autoComplete="family-name"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.backgroundElement,
-                },
-              ]}
+            <StyledTextInput
               placeholder="Email (optional)"
-              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -209,20 +185,14 @@ function RegisterForm({
             />
           </View>
 
-          {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+          <ErrorText message={error} />
 
-          <TouchableOpacity
-            style={[styles.button, !canSubmit && styles.buttonDisabled]}
+          <Button
+            label={submitting ? "Joining..." : "Continue as Guest"}
             onPress={handleRegister}
             disabled={!canSubmit}
-          >
-            <ThemedText
-              style={styles.buttonText}
-              themeColor={canSubmit ? "background" : "textSecondary"}
-            >
-              {submitting ? "Joining..." : "Continue as Guest"}
-            </ThemedText>
-          </TouchableOpacity>
+            style={styles.button}
+          />
 
           <TouchableOpacity onPress={onSwitchToSignIn} style={styles.signInRow}>
             <ThemedText type="small" style={styles.linkText}>
@@ -284,37 +254,15 @@ const styles = StyleSheet.create({
   form: {
     gap: Spacing.two,
   },
-  input: {
-    height: 48,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    fontSize: 16,
-  },
-  error: {
-    color: "#ef4444",
-    textAlign: "center",
-  },
   button: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: "#3c87f7",
-    alignItems: "center",
-    justifyContent: "center",
     marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.4,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
   },
   signInRow: {
     alignItems: "center",
     paddingVertical: Spacing.two,
   },
   linkText: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
   },
   cancelButton: {

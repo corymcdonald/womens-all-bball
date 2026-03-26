@@ -61,6 +61,24 @@ export const Spacing = {
   six: 64,
 } as const;
 
+// Semantic colors — consistent across light/dark (brand colors)
+export const SemanticColors = {
+  primary: "#3c87f7",
+  success: "#10b981",
+  warning: "#f59e0b",
+  error: "#ef4444",
+} as const;
+
+export const BorderRadius = {
+  small: 6,
+  medium: 10,
+  large: 12,
+  pill: 100,
+} as const;
+
+export const InputHeight = 48;
+export const ButtonHeight = 48;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const WebNavHeight = Platform.OS === "web" ? 56 : 0;
 export const MaxContentWidth = 800;

@@ -3,9 +3,10 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { Skeleton } from "@/components/skeleton";
-import { TeamView, styles as teamStyles } from "@/components/team-view";
-import { COLOR_VALUES, TEAM_COLORS } from "@/constants/team-colors";
-import { Spacing } from "@/constants/theme";
+import { ColorPicker } from "@/components/game/color-picker";
+import { TeamView, styles as teamStyles } from "@/components/game/team-view";
+import { COLOR_VALUES } from "@/constants/team-colors";
+import { BorderRadius, SemanticColors, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import type {
   ActiveGame,
@@ -68,35 +69,6 @@ function SkeletonTeam({ align = "left" }: { align?: "left" | "right" }) {
   );
 }
 
-function ColorPicker({
-  currentColor,
-  align = "left",
-  onSelect,
-}: {
-  currentColor: string;
-  align?: "left" | "right";
-  onSelect: (color: string) => void;
-}) {
-  const isRight = align === "right";
-  return (
-    <View style={[styles.colorPicker, isRight && styles.colorPickerRight]}>
-      {TEAM_COLORS.map((color) => (
-        <TouchableOpacity
-          key={color}
-          onPress={() => onSelect(color)}
-          style={[
-            styles.colorOption,
-            {
-              backgroundColor:
-                COLOR_VALUES[color.toLowerCase()] ?? color.toLowerCase(),
-            },
-            currentColor === color && styles.colorOptionSelected,
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
 
 // ─── Main component ───
 
@@ -346,10 +318,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#10b981",
+    backgroundColor: SemanticColors.success,
   },
   liveText: {
-    color: "#10b981",
+    color: SemanticColors.success,
     fontWeight: "700",
     fontSize: 11,
   },
@@ -372,33 +344,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
   },
   editText: {
-    color: "#3c87f7",
+    color: SemanticColors.primary,
     fontWeight: "600",
-  },
-  colorPicker: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.one,
-    paddingVertical: Spacing.one,
-  },
-  colorPickerRight: {
-    justifyContent: "flex-end",
-  },
-  colorOption: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  colorOptionSelected: {
-    borderColor: "#3c87f7",
-    borderWidth: 3,
   },
   declareButton: {
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#3c87f7",
+    backgroundColor: SemanticColors.primary,
     alignItems: "center",
     justifyContent: "center",
   },

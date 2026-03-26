@@ -1,17 +1,17 @@
 import { useRef, useState } from "react";
-import {
-  Modal,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 import { ThemedText } from "@/components/themed-text";
-import { Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
+import { Button } from "@/components/ui/button";
+import { StyledTextInput } from "@/components/ui/text-input";
+import {
+  BorderRadius,
+  ButtonHeight,
+  SemanticColors,
+  Spacing,
+} from "@/constants/theme";
 
 type Props = {
   isAuthorized: boolean;
@@ -30,7 +30,6 @@ export function JoinSection({
   setError,
   requireAuth,
 }: Props) {
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [showScanner, setShowScanner] = useState(false);
   const [showManual, setShowManual] = useState(false);
@@ -73,27 +72,19 @@ export function JoinSection({
 
   if (isAuthorized) {
     return (
-      <TouchableOpacity
-        style={styles.primaryButton}
+      <Button
+        label="Join Waitlist"
         onPress={() => requireAuth(onQuickJoin)}
-      >
-        <ThemedText style={styles.buttonText} themeColor="background">
-          Join Waitlist
-        </ThemedText>
-      </TouchableOpacity>
+      />
     );
   }
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.primaryButton}
+      <Button
+        label="Scan QR Code to Join"
         onPress={() => requireAuth(handleOpenScanner)}
-      >
-        <ThemedText style={styles.buttonText} themeColor="background">
-          Scan QR Code to Join
-        </ThemedText>
-      </TouchableOpacity>
+      />
 
       <TouchableOpacity onPress={() => setShowManual(!showManual)}>
         <ThemedText type="small" themeColor="textSecondary">
@@ -103,26 +94,16 @@ export function JoinSection({
 
       {showManual && (
         <View style={styles.manualSection}>
-          <TextInput
-            style={[
-              styles.tokenInput,
-              {
-                color: theme.text,
-                backgroundColor: theme.backgroundElement,
-              },
-            ]}
+          <StyledTextInput
             placeholder="Enter token from staff"
-            placeholderTextColor={theme.textSecondary}
             value={manualToken}
             onChangeText={setManualToken}
             autoCapitalize="characters"
             autoCorrect={false}
+            style={styles.tokenInput}
           />
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              !manualToken.trim() && styles.buttonDisabled,
-            ]}
+          <Button
+            label="Join"
             onPress={() => {
               requireAuth(() => {
                 onTokenJoin(manualToken.trim().toUpperCase());
@@ -130,11 +111,7 @@ export function JoinSection({
               });
             }}
             disabled={!manualToken.trim()}
-          >
-            <ThemedText style={styles.buttonText} themeColor="background">
-              Join
-            </ThemedText>
-          </TouchableOpacity>
+          />
         </View>
       )}
 
@@ -186,36 +163,11 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     alignItems: "center",
   },
-  primaryButton: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: "#3c87f7",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "stretch",
-  },
-  secondaryButton: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#3c87f7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buttonDisabled: {
-    opacity: 0.4,
-  },
   manualSection: {
     gap: Spacing.two,
     alignSelf: "stretch",
   },
   tokenInput: {
-    height: 48,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
     fontSize: 18,
     textAlign: "center",
   },
@@ -242,7 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 10,
+    borderRadius: BorderRadius.medium,
   },
   scannerCloseText: {
     color: "#fff",
@@ -256,6 +208,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    borderRadius: 10,
+    borderRadius: BorderRadius.medium,
   },
 });
