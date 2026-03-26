@@ -45,3 +45,4 @@ app-example
 supabase/
 memory/
 .env
+.claude/agentcheck/reports/

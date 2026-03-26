@@ -13,6 +13,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@clerk/backend": "^3.2.3",
+    "@clerk/expo": "^3.1.5",
     "@expo/ui": "^55.0.5",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",

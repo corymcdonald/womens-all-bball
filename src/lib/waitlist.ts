@@ -15,7 +15,7 @@ export function canTransition(from: string, to: string): boolean {
 export async function getWaitingQueue(waitlistId: string) {
   const { data, error } = await supabase
     .from("waitlist_players")
-    .select("*, users(id, first_name, last_name, phone)")
+    .select("*, users(id, first_name, last_name, email)")
     .eq("waitlist_id", waitlistId)
     .in("status", ["waiting", "absent"])
     .order("priority", { ascending: true, nullsFirst: false })
@@ -29,7 +29,7 @@ export async function getWaitingQueue(waitlistId: string) {
 export async function getNextWaitingPlayer(waitlistId: string) {
   const { data, error } = await supabase
     .from("waitlist_players")
-    .select("*, users(id, first_name, last_name, phone)")
+    .select("*, users(id, first_name, last_name, email)")
     .eq("waitlist_id", waitlistId)
     .eq("status", "waiting")
     .order("priority", { ascending: true, nullsFirst: false })

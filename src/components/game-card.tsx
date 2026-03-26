@@ -3,6 +3,11 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { Skeleton } from "@/components/skeleton";
+import {
+  TeamView,
+  type TeamPlayer,
+  styles as teamStyles,
+} from "@/components/team-view";
 import { COLOR_VALUES, TEAM_COLORS } from "@/constants/team-colors";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -56,114 +61,12 @@ type Props = {
   onUpdateColor?: (teamId: string, color: string) => void;
 };
 
-// ─── Team rendering ───
-
-function TeamView({
-  color,
-  players,
-  record,
-  align = "left",
-  isSelected,
-  isTappable,
-  onTap,
-}: {
-  color: string;
-  players: Array<{
-    user_id: string;
-    users: { first_name: string; last_name: string };
-  }>;
-  record?: string;
-  align?: "left" | "right";
-  isSelected?: boolean;
-  isTappable?: boolean;
-  onTap?: () => void;
-}) {
-  const isRight = align === "right";
-  const teamColor = COLOR_VALUES[color.toLowerCase()] ?? color.toLowerCase();
-
-  const content = (
-    <View
-      style={[
-        styles.teamCard,
-        isTappable && !isSelected && styles.teamCardTappable,
-        isSelected && styles.teamCardSelected,
-        isRight && styles.teamCardRight,
-      ]}
-    >
-      <View style={[styles.teamHeader, isRight && styles.teamHeaderRight]}>
-        <View
-          style={[
-            styles.colorDot,
-            {
-              backgroundColor: teamColor,
-              boxShadow:
-                color.toLowerCase() === "white"
-                  ? "0px 0px 1px rgba(0,0,0,1)"
-                  : "",
-            },
-          ]}
-        />
-        <ThemedText type="smallBold">
-          {color}
-          {record ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {" "}
-              ({record})
-            </ThemedText>
-          ) : null}
-        </ThemedText>
-      </View>
-      {players.map((tp) => (
-        <ThemedText
-          key={tp.user_id}
-          type="small"
-          themeColor="textSecondary"
-          style={isRight && styles.textRight}
-        >
-          {tp.users.first_name} {tp.users.last_name[0]}.
-        </ThemedText>
-      ))}
-      {isTappable && (
-        <View
-          style={[
-            styles.selectIndicator,
-            isSelected && styles.selectIndicatorSelected,
-            isRight && styles.selectIndicatorRight,
-          ]}
-        >
-          <ThemedText
-            type="small"
-            style={[
-              styles.selectIndicatorText,
-              isSelected && styles.selectIndicatorTextSelected,
-            ]}
-          >
-            {isSelected ? "Winner" : "Tap to select"}
-          </ThemedText>
-        </View>
-      )}
-    </View>
-  );
-
-  if (isTappable && onTap) {
-    return (
-      <TouchableOpacity
-        onPress={onTap}
-        activeOpacity={0.7}
-        style={styles.teamTouchable}
-      >
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return content;
-}
+// ─── Skeleton & helpers ───
 
 function SkeletonTeam({ align = "left" }: { align?: "left" | "right" }) {
   const isRight = align === "right";
   return (
-    <View style={[styles.teamCard, isRight && styles.teamCardRight]}>
+    <View style={[teamStyles.teamCard, isRight && teamStyles.teamCardRight]}>
       <Skeleton
         width={80}
         height={14}
@@ -276,8 +179,10 @@ export function GameCard({
   const isLive = !!activeGame;
   const isTransitioning = !!pendingWinner;
 
-  let leftTeam: { id: string; color: string; players: any[] } | null = null;
-  let rightTeam: { id: string; color: string; players: any[] } | null = null;
+  let leftTeam: { id: string; color: string; players: TeamPlayer[] } | null =
+    null;
+  let rightTeam: { id: string; color: string; players: TeamPlayer[] } | null =
+    null;
   let leftRecord: string | undefined;
   let rightRecord: string | undefined;
   let label = "";
@@ -484,65 +389,6 @@ const styles = StyleSheet.create({
   teamsRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-  },
-  teamTouchable: {
-    flex: 1,
-  },
-  teamCard: {
-    flex: 1,
-    gap: 4,
-    padding: Spacing.two,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  teamCardTappable: {
-    borderColor: "rgba(128, 128, 128, 0.2)",
-  },
-  teamCardSelected: {
-    borderColor: "#3c87f7",
-  },
-  teamCardRight: {
-    alignItems: "flex-end",
-  },
-  teamHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.one,
-    marginBottom: 4,
-  },
-  teamHeaderRight: {
-    flexDirection: "row-reverse",
-  },
-  textRight: {
-    textAlign: "right",
-  },
-  colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  selectIndicator: {
-    marginTop: Spacing.one,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.two,
-    borderRadius: 8,
-    backgroundColor: "rgba(128, 128, 128, 0.1)",
-    alignSelf: "flex-start",
-  },
-  selectIndicatorSelected: {
-    backgroundColor: "#3c87f7",
-  },
-  selectIndicatorRight: {
-    alignSelf: "flex-end",
-  },
-  selectIndicatorText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#888",
-  },
-  selectIndicatorTextSelected: {
-    color: "#fff",
   },
   vs: {
     fontWeight: "700",

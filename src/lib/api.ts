@@ -2,12 +2,24 @@ import { getStoredUser } from "./user-store";
 
 const API_BASE = "/api";
 
+// Clerk token getter — set by the app when a Clerk session is active
+let _getClerkToken: (() => Promise<string | null>) | null = null;
+
+export function setClerkTokenGetter(getter: () => Promise<string | null>) {
+  _getClerkToken = getter;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const stored = await getStoredUser();
   const userId = stored ? JSON.parse(stored).id : null;
+
+  // Get Clerk token if available (for admin-protected endpoints)
+  const clerkToken = _getClerkToken ? await _getClerkToken() : null;
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(userId ? { "x-user-id": userId } : {}),
+    ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}),
     ...((options.headers as Record<string, string>) ?? {}),
   };
 
@@ -30,7 +42,8 @@ export function getUser(id: string) {
     id: string;
     first_name: string;
     last_name: string;
-    phone: string | null;
+    email: string | null;
+    clerk_id: string | null;
     role: "player" | "admin";
   }>(`/users/${id}`);
 }
@@ -39,7 +52,8 @@ type UserResult = {
   id: string;
   first_name: string;
   last_name: string;
-  phone: string | null;
+  email: string | null;
+  clerk_id: string | null;
   role: "player" | "admin";
 };
 
@@ -48,7 +62,7 @@ export function updateUser(
   body: {
     first_name?: string;
     last_name?: string;
-    phone?: string;
+    email?: string;
     role?: string;
   },
 ) {
@@ -77,17 +91,23 @@ export function promoteUser(id: string) {
 export function registerUser(body: {
   first_name: string;
   last_name: string;
-  phone?: string;
+  email?: string;
+  clerk_id?: string;
 }) {
-  return request<{
-    id: string;
-    first_name: string;
-    last_name: string;
-    phone: string | null;
-    role: "player" | "admin";
-  }>("/users", {
+  return request<UserResult>("/users", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export function getUserByClerkId(clerkId: string) {
+  return request<UserResult>(`/users?clerk_id=${encodeURIComponent(clerkId)}`);
+}
+
+export function linkClerkId(id: string, clerkId: string) {
+  return request<UserResult>(`/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ clerk_id: clerkId }),
   });
 }
 
@@ -195,7 +215,7 @@ export function leaveWaitlist(id: string) {
 }
 
 export function rejoinWaitlist(id: string) {
-  return request(`/waitlist/${id}/rejoin`, { method: "POST" });
+  return request(`/waitlist/${id}/join`, { method: "POST" });
 }
 
 // Staff - Waitlist
@@ -269,6 +289,44 @@ export function addPlayer(
 }
 
 // Games
+export type GameResult = {
+  id: string;
+  waitlist_id: string;
+  winner_id: string | null;
+  status: string;
+  created_at: string;
+  waitlist: { id: string; created_at: string };
+  team1: {
+    id: string;
+    color: string;
+    team_players: Array<{
+      user_id: string;
+      users: { id: string; first_name: string; last_name: string };
+    }>;
+  };
+  team2: {
+    id: string;
+    color: string;
+    team_players: Array<{
+      user_id: string;
+      users: { id: string; first_name: string; last_name: string };
+    }>;
+  };
+  winner: { id: string; color: string } | null;
+};
+
+export type GamesResponse = {
+  data: GameResult[];
+  cursor: string | null;
+};
+
+export function listGames(cursor?: string) {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  return request<GamesResponse>(`/games${qs ? `?${qs}` : ""}`);
+}
+
 export function getGame(id: string) {
   return request(`/games/${id}`);
 }

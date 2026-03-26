@@ -8,7 +8,7 @@ import { ServiceError } from "./service-error";
 
 /**
  * Add a user to a waitlist queue with status "waiting".
- * Shared by: join, join-token, rejoin, add-player endpoints.
+ * Shared by: join, join-token, add-player endpoints.
  * Handles the duplicate-key race condition gracefully.
  */
 export async function addToQueue(waitlistId: string, userId: string) {

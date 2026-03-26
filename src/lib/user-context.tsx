@@ -7,7 +7,8 @@ type User = {
   id: string;
   first_name: string;
   last_name: string;
-  phone: string | null;
+  email: string | null;
+  clerk_id: string | null;
   role: "player" | "admin";
 };
 

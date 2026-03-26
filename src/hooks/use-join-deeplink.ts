@@ -5,6 +5,7 @@ import * as api from "@/lib/api";
 export function useJoinDeepLink(options: {
   onJoined: () => void;
   onError: (message: string) => void;
+  requireAuth: (cb: () => void) => void;
 }) {
   useEffect(() => {
     function handleUrl(event: { url: string }) {
@@ -16,12 +17,14 @@ export function useJoinDeepLink(options: {
 
       if (typeof waitlistId !== "string" || typeof token !== "string") return;
 
-      api
-        .joinWaitlistWithToken(waitlistId, token)
-        .then(() => options.onJoined())
-        .catch((e) =>
-          options.onError(e instanceof Error ? e.message : "Failed to join"),
-        );
+      options.requireAuth(() => {
+        api
+          .joinWaitlistWithToken(waitlistId, token)
+          .then(() => options.onJoined())
+          .catch((e) =>
+            options.onError(e instanceof Error ? e.message : "Failed to join"),
+          );
+      });
     }
 
     // Handle deep link if the app was opened by one
@@ -32,5 +35,5 @@ export function useJoinDeepLink(options: {
     // Handle deep links while the app is already open
     const subscription = Linking.addEventListener("url", handleUrl);
     return () => subscription.remove();
-  }, [options.onJoined, options.onError]);
+  }, [options.onJoined, options.onError, options.requireAuth]);
 }

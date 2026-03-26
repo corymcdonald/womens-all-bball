@@ -34,7 +34,7 @@ export class MockDB {
       id: this.nextId(),
       first_name: "Test",
       last_name: "User",
-      phone: null,
+      email: null,
       role: "player",
       created_at: new Date().toISOString(),
       ...overrides,

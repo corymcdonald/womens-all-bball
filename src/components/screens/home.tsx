@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   StyleSheet,
   TouchableOpacity,
@@ -23,10 +25,11 @@ import {
   SkeletonCard,
   SkeletonQueueItem,
 } from "@/components/skeleton";
-import { Spacing } from "@/constants/theme";
+import { Spacing, WebNavHeight } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useJoinDeepLink } from "@/hooks/use-join-deeplink";
 import { useUser } from "@/lib/user-context";
+import { useAuthGate } from "@/lib/auth-gate-context";
 import { useWaitlist } from "@/hooks/use-waitlist";
 import { formatWaitlistDate } from "@/lib/format-date";
 import { addAuthorizedWaitlist } from "@/lib/user-store";
@@ -35,6 +38,7 @@ import * as api from "@/lib/api";
 export default function HomeScreen() {
   const theme = useTheme();
   const { user } = useUser();
+  const { requireAuth } = useAuthGate();
   const isAdmin = user?.role === "admin";
   const [editMode, setEditMode] = useState(false);
   const [pendingWinner, setPendingWinner] = useState<{
@@ -51,6 +55,7 @@ export default function HomeScreen() {
   useJoinDeepLink({
     onJoined: () => wl.fetchLatestWaitlist(),
     onError: (message) => wl.setError(message),
+    requireAuth,
   });
 
   async function handleDeclareWinner(gameId: string, winnerId: string) {
@@ -162,9 +167,17 @@ export default function HomeScreen() {
       {/* User info */}
       <View style={styles.topRow}>
         <ThemedText type="small">
-          {user?.first_name} {user?.last_name}
-          {isAdmin ? " (Staff)" : ""}
+          {user
+            ? `${user.first_name} ${user.last_name}${isAdmin ? " (Staff)" : ""}`
+            : " "}
         </ThemedText>
+        {!user && (
+          <TouchableOpacity onPress={() => requireAuth(() => {})}>
+            <ThemedText type="small" style={styles.signInLink}>
+              Sign In
+            </ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Date */}
@@ -267,6 +280,7 @@ export default function HomeScreen() {
           onTokenJoin={wl.joinWithToken}
           onScanJoin={handleScanJoin}
           setError={wl.setError}
+          requireAuth={requireAuth}
         />
       )}
 
@@ -313,23 +327,29 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <FlatList
-          data={queue}
-          keyExtractor={(item) => item.id}
-          refreshControl={
-            <RefreshControl
-              refreshing={wl.refreshing}
-              onRefresh={wl.onRefresh}
-            />
-          }
-          renderItem={renderStaticItem}
-          ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
-          contentContainerStyle={styles.list}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
-      </SafeAreaView>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <FlatList
+            data={queue}
+            keyExtractor={(item) => item.id}
+            refreshControl={
+              <RefreshControl
+                refreshing={wl.refreshing}
+                onRefresh={wl.onRefresh}
+              />
+            }
+            renderItem={renderStaticItem}
+            ListHeaderComponent={listHeader}
+            ListFooterComponent={listFooter}
+            contentContainerStyle={styles.list}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            keyboardShouldPersistTaps="handled"
+          />
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
@@ -353,7 +373,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: Spacing.two,
+    paddingTop: WebNavHeight + Spacing.two,
   },
   skeletonStats: {
     flexDirection: "row",
@@ -390,6 +410,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   editButton: {
+    color: "#3c87f7",
+    fontWeight: "600",
+  },
+  signInLink: {
     color: "#3c87f7",
     fontWeight: "600",
   },

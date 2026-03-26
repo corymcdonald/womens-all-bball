@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -9,11 +10,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth, useUser as useClerkUser } from "@clerk/expo";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { JoinQRCode } from "@/components/join-qr-code";
-import { Spacing } from "@/constants/theme";
+import AuthScreen from "@/components/screens/auth";
+import { Spacing, WebNavHeight } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useUser } from "@/lib/user-context";
 import { formatWaitlistDate } from "@/lib/format-date";
@@ -23,12 +26,15 @@ import { posthog } from "@/lib/posthog";
 export default function SettingsScreen() {
   const theme = useTheme();
   const { user, login, logout } = useUser();
+  const { signOut: clerkSignOut } = useAuth();
+  const { user: clerkUser } = useClerkUser();
+  const [showLinkModal, setShowLinkModal] = useState(false);
   const isAdmin = user?.role === "admin";
 
   // Profile
   const [firstName, setFirstName] = useState(user?.first_name ?? "");
   const [lastName, setLastName] = useState(user?.last_name ?? "");
-  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
   const [profileSaved, setProfileSaved] = useState(false);
   const [error, setError] = useState("");
 
@@ -77,7 +83,7 @@ export default function SettingsScreen() {
       const updated = await api.updateUser(user.id, {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
       });
       await login(updated);
       posthog.capture("profile_updated");
@@ -85,6 +91,37 @@ export default function SettingsScreen() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
     }
+  }
+
+  // When Clerk auth completes in the link modal, link the clerk_id to the Supabase user
+  useEffect(() => {
+    if (!showLinkModal || !clerkUser?.id || !user || user.clerk_id) return;
+
+    async function linkAccount() {
+      try {
+        const updated = await api.linkClerkId(user!.id, clerkUser!.id);
+        await login(updated);
+        posthog.capture("account_linked");
+        setShowLinkModal(false);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to link account");
+        setShowLinkModal(false);
+      }
+    }
+
+    linkAccount();
+  }, [showLinkModal, clerkUser?.id, user?.id, user?.clerk_id]);
+
+  async function handleLogout() {
+    posthog.capture("user_logged_out");
+    if (user?.clerk_id) {
+      try {
+        await clerkSignOut();
+      } catch {
+        // Clerk session may not exist — continue with local logout
+      }
+    }
+    await logout();
   }
 
   async function handleDeleteAccount() {
@@ -226,14 +263,16 @@ export default function SettingsScreen() {
                 styles.input,
                 { color: theme.text, backgroundColor: theme.background },
               ]}
-              placeholder="Phone (optional)"
+              placeholder="Email"
               placeholderTextColor={theme.textSecondary}
-              value={phone}
+              value={email}
               onChangeText={(t) => {
-                setPhone(t);
+                setEmail(t);
                 setProfileSaved(false);
               }}
-              keyboardType="phone-pad"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
             />
             <TouchableOpacity
               style={[styles.primaryButton, profileSaved && styles.savedButton]}
@@ -378,12 +417,26 @@ export default function SettingsScreen() {
             <ThemedText type="smallBold" style={styles.sectionLabel}>
               Account
             </ThemedText>
+            {!user.clerk_id && (
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => setShowLinkModal(true)}
+              >
+                <ThemedText style={styles.buttonText} themeColor="background">
+                  Link Full Account
+                </ThemedText>
+              </TouchableOpacity>
+            )}
+            {user.clerk_id && (
+              <View style={styles.linkedBadge}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Full account linked
+                </ThemedText>
+              </View>
+            )}
             <TouchableOpacity
               style={styles.logoutButton}
-              onPress={() => {
-                posthog.capture("user_logged_out");
-                logout();
-              }}
+              onPress={handleLogout}
             >
               <ThemedText style={styles.logoutText}>Log Out</ThemedText>
             </TouchableOpacity>
@@ -396,6 +449,14 @@ export default function SettingsScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <Modal
+        visible={showLinkModal}
+        animationType="slide"
+        onRequestClose={() => setShowLinkModal(false)}
+      >
+        <AuthScreen onDismiss={() => setShowLinkModal(false)} linkOnly />
+      </Modal>
     </ThemedView>
   );
 }
@@ -414,6 +475,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.three,
+    paddingTop: WebNavHeight + Spacing.three,
     paddingBottom: Spacing.six,
     gap: Spacing.three,
   },
@@ -498,5 +560,13 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     fontSize: 16,
     fontWeight: "500",
+  },
+  linkedBadge: {
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#10b981",
   },
 });

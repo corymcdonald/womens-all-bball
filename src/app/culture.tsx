@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Spacing } from "@/constants/theme";
+import { Spacing, WebNavHeight } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 const ETIQUETTE = [
@@ -77,6 +77,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.three,
+    paddingTop: WebNavHeight + Spacing.three,
     paddingBottom: Spacing.six,
     gap: Spacing.two,
   },

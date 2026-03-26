@@ -1,11 +1,16 @@
+import { createClerkClient } from "@clerk/backend";
 import { getUserId, requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+
+const clerk = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY!,
+});
 
 // GET /api/users/:id
 export async function GET(request: Request, { id }: { id: string }) {
   const { data, error } = await supabase
     .from("users")
-    .select("id, first_name, last_name, phone, role")
+    .select("id, first_name, last_name, email, clerk_id, role")
     .eq("id", id)
     .single();
 
@@ -30,7 +35,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   if (
     body.first_name !== undefined ||
     body.last_name !== undefined ||
-    body.phone !== undefined
+    body.email !== undefined
   ) {
     if (requesterId !== id) {
       return Response.json(
@@ -40,7 +45,33 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     }
     if (body.first_name !== undefined) updates.first_name = body.first_name;
     if (body.last_name !== undefined) updates.last_name = body.last_name;
-    if (body.phone !== undefined) updates.phone = body.phone || null;
+    if (body.email !== undefined) updates.email = body.email || null;
+  }
+
+  // Link Clerk account — only the user themselves, and only if not already linked
+  if (body.clerk_id !== undefined) {
+    if (requesterId !== id) {
+      return Response.json(
+        { error: "Can only link your own account" },
+        { status: 403 },
+      );
+    }
+
+    // Check if already linked
+    const { data: existing } = await supabase
+      .from("users")
+      .select("clerk_id")
+      .eq("id", id)
+      .single();
+
+    if (existing?.clerk_id) {
+      return Response.json(
+        { error: "Account is already linked" },
+        { status: 409 },
+      );
+    }
+
+    updates.clerk_id = body.clerk_id;
   }
 
   // Role — only admins can change
@@ -57,7 +88,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     .from("users")
     .update(updates)
     .eq("id", id)
-    .select("id, first_name, last_name, phone, role")
+    .select("id, first_name, last_name, email, clerk_id, role")
     .single();
 
   if (error) {
@@ -81,20 +112,37 @@ export async function DELETE(request: Request, { id }: { id: string }) {
     .eq("user_id", id)
     .in("status", ["waiting", "playing", "absent"]);
 
+  // Look up the clerk_id before anonymizing
+  const { data: user } = await supabase
+    .from("users")
+    .select("clerk_id")
+    .eq("id", id)
+    .single();
+
   // Anonymize the user to preserve game history
   const { error } = await supabase
     .from("users")
     .update({
       first_name: "Anonymous",
       last_name: "Anonymous",
-      phone: null,
+      email: null,
       push_token: null,
+      clerk_id: null,
       role: "player",
     })
     .eq("id", id);
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
+  }
+
+  // Delete the Clerk user account
+  if (user?.clerk_id) {
+    try {
+      await clerk.users.deleteUser(user.clerk_id);
+    } catch {
+      // Clerk user may already be deleted — don't block the response
+    }
   }
 
   return Response.json({ success: true });

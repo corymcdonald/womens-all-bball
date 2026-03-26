@@ -67,7 +67,18 @@ export async function GET(request: Request, { id }: { id: string }) {
   }));
 
   // Compute streak from game history
-  const { streak, teamId: streakTeamId } = await getStreak(id);
+  const { streak: rawStreak, teamId: rawStreakTeamId } = await getStreak(id);
+
+  // If the streak team is no longer staged or playing, the streak has reset
+  const streakTeamStillActive =
+    rawStreakTeamId &&
+    (stagedTeams.some((t) => t.id === rawStreakTeamId) ||
+      (currentGame &&
+        (currentGame.team1.id === rawStreakTeamId ||
+          currentGame.team2.id === rawStreakTeamId)));
+
+  const streak = streakTeamStillActive ? rawStreak : 0;
+  const streakTeamId = streakTeamStillActive ? rawStreakTeamId : null;
   const streakMaxed = streak >= (waitlist as any).max_wins;
   const upNextCount = streakMaxed ? 10 : 5;
 

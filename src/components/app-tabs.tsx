@@ -21,6 +21,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="games">
+        <NativeTabs.Trigger.Label>Games</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="sportscourt.fill" md="sports_basketball" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="rules">
         <NativeTabs.Trigger.Label>Rules</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="list.clipboard.fill" md="assignment" />

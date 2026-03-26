@@ -19,6 +19,7 @@ type Props = {
   onTokenJoin: (token: string) => void;
   onScanJoin: (waitlistId: string, token: string) => void;
   setError: (msg: string) => void;
+  requireAuth: (cb: () => void) => void;
 };
 
 export function JoinSection({
@@ -27,6 +28,7 @@ export function JoinSection({
   onTokenJoin,
   onScanJoin,
   setError,
+  requireAuth,
 }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -71,7 +73,10 @@ export function JoinSection({
 
   if (isAuthorized) {
     return (
-      <TouchableOpacity style={styles.primaryButton} onPress={onQuickJoin}>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => requireAuth(onQuickJoin)}
+      >
         <ThemedText style={styles.buttonText} themeColor="background">
           Join Waitlist
         </ThemedText>
@@ -83,7 +88,7 @@ export function JoinSection({
     <View style={styles.container}>
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={handleOpenScanner}
+        onPress={() => requireAuth(handleOpenScanner)}
       >
         <ThemedText style={styles.buttonText} themeColor="background">
           Scan QR Code to Join
@@ -110,7 +115,7 @@ export function JoinSection({
             placeholderTextColor={theme.textSecondary}
             value={manualToken}
             onChangeText={setManualToken}
-            autoCapitalize="none"
+            autoCapitalize="characters"
             autoCorrect={false}
           />
           <TouchableOpacity
@@ -119,8 +124,10 @@ export function JoinSection({
               !manualToken.trim() && styles.buttonDisabled,
             ]}
             onPress={() => {
-              onTokenJoin(manualToken.trim());
-              setManualToken("");
+              requireAuth(() => {
+                onTokenJoin(manualToken.trim().toUpperCase());
+                setManualToken("");
+              });
             }}
             disabled={!manualToken.trim()}
           >

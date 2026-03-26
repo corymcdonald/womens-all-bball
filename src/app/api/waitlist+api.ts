@@ -1,9 +1,9 @@
 import { PASSCODES } from "@/constants/passcodes";
-import { requireAdmin } from "@/lib/auth";
+import { isAdmin, requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
-// GET /api/waitlist — list all waitlists
-export async function GET() {
+// GET /api/waitlist — list all waitlists (passcode included only for admins)
+export async function GET(request: Request) {
   const { data, error } = await supabase
     .from("waitlists")
     .select("*")
@@ -11,6 +11,12 @@ export async function GET() {
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
+  }
+
+  const admin = await isAdmin(request);
+  if (!admin) {
+    const safe = (data ?? []).map(({ passcode, ...rest }) => rest);
+    return Response.json(safe);
   }
 
   return Response.json(data);

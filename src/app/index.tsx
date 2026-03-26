@@ -2,11 +2,10 @@ import { ActivityIndicator } from "react-native";
 
 import { ThemedView } from "@/components/themed-view";
 import { useUser } from "@/lib/user-context";
-import RegisterScreen from "@/components/screens/register";
 import HomeScreen from "@/components/screens/home";
 
 export default function Index() {
-  const { user, isLoading } = useUser();
+  const { isLoading } = useUser();
 
   if (isLoading) {
     return (
@@ -16,10 +15,6 @@ export default function Index() {
         <ActivityIndicator size="large" />
       </ThemedView>
     );
-  }
-
-  if (!user) {
-    return <RegisterScreen />;
   }
 
   return <HomeScreen />;

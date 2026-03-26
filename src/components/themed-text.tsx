@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     fontWeight: 500,
   },
   title: {
-    fontSize: 48,
+    fontSize: 42,
     fontWeight: 600,
     lineHeight: 52,
   },
