@@ -1,8 +1,8 @@
-import { getUserId, requireAdmin, verifyClerkToken } from "@/lib/auth";
 import { handleRouteError } from "@/lib/api-error";
-import { supabase } from "@/lib/supabase";
+import { getUserId, requireAdmin, verifyClerkToken } from "@/lib/auth";
 import { posthogServer } from "@/lib/posthog-server";
-import { linkClerkAccount, anonymizeUser } from "@/lib/services/user-service";
+import { anonymizeUser, linkClerkAccount } from "@/lib/services/user-service";
+import { supabase } from "@/lib/supabase";
 
 const USER_SELECT = "id, first_name, last_name, email, clerk_id, role";
 
@@ -84,7 +84,10 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     // Profile fields — only the user themselves can update
     if (hasProfileFields(body)) {
       if (requesterId !== id) {
-        return Response.json({ error: "Can only update your own profile" }, { status: 403 });
+        return Response.json(
+          { error: "Can only update your own profile" },
+          { status: 403 },
+        );
       }
       applyProfileUpdates(body, updates);
     }

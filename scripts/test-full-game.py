@@ -3,15 +3,19 @@
 Full game flow test for Women's All B-Ball.
 
 Usage:
-    python scripts/test-full-game.py [BASE_URL] [ADMIN_USER_ID] [NUM_PLAYERS]
+    python scripts/test-full-game.py [BASE_URL] [NUM_PLAYERS]
 
-Creates players with random names (default 12), forms 2 teams, plays a game,
-completes it, and auto-starts the next game with the winning team staying.
+Creates guest players, forms 2 teams, plays a game, completes it,
+and verifies the orchestrator auto-starts the next game.
 
-Requires: admin user already promoted in the DB.
+Requires env vars:
+    SUPABASE_URL          — Supabase project URL
+    SUPABASE_SECRET_KEY   — Supabase service role / secret key
+    CLERK_SECRET_KEY      — Clerk secret key (for admin session token)
 """
 
 import json
+import os
 import sys
 import time
 import urllib.request
@@ -27,27 +31,61 @@ except ImportError:
     from faker import Faker
     fake = Faker()
 
-NUM_PLAYERS = int(sys.argv[3]) if len(sys.argv) > 3 else 12
-
 BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8081"
-ADMIN_ID = sys.argv[2] if len(sys.argv) > 2 else None
+NUM_PLAYERS = int(sys.argv[2]) if len(sys.argv) > 2 else 12
 API = f"{BASE_URL}/api"
 
-PLAYERS = [(fake.first_name_female(), fake.last_name()) for _ in range(NUM_PLAYERS)]
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY")
+CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY")
 
-if not ADMIN_ID:
-    print("Usage: python scripts/test-full-game.py [BASE_URL] [ADMIN_USER_ID] [NUM_PLAYERS]")
-    print("Create an admin first with test-seed.sh, then promote them in the DB.")
+if not SUPABASE_URL or not SUPABASE_SECRET_KEY or not CLERK_SECRET_KEY:
+    print("Required env vars: SUPABASE_URL, SUPABASE_SECRET_KEY, CLERK_SECRET_KEY")
     sys.exit(1)
 
 
-def api_request(method, path, body=None, user_id=None):
+# ─── Helpers ───
+
+def supabase_query(table, params=""):
+    url = f"{SUPABASE_URL}/rest/v1/{table}?{params}"
+    req = urllib.request.Request(url, headers={
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": f"Bearer {SUPABASE_SECRET_KEY}",
+    })
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
+
+
+def get_clerk_sign_in_token(clerk_user_id):
+    if not CLERK_SECRET_KEY.startswith("sk_"):
+        print(f"  WARNING: CLERK_SECRET_KEY starts with '{CLERK_SECRET_KEY[:10]}...' — expected 'sk_...'")
+        sys.exit(1)
+
+    url = "https://api.clerk.com/v1/sign_in_tokens"
+    body = json.dumps({"user_id": clerk_user_id}).encode()
+    req = urllib.request.Request(url, data=body, headers={
+        "Authorization": f"Bearer {CLERK_SECRET_KEY}",
+        "Content-Type": "application/json",
+        "User-Agent": "womens-all-bball/1.0",
+    }, method="POST")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read())["token"]
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        print(f"  Clerk API error ({e.code}): {error_body}")
+        print(f"  Clerk user ID: {clerk_user_id}")
+        sys.exit(1)
+
+
+def api_request(method, path, body=None, user_id=None, bearer_token=None):
     url = f"{API}{path}"
     data = json.dumps(body).encode() if body else None
     headers = {"Content-Type": "application/json"}
     if user_id:
         headers["x-user-id"] = user_id
-
+    if bearer_token:
+        headers["Authorization"] = f"Bearer {bearer_token}"
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req) as resp:
@@ -56,12 +94,12 @@ def api_request(method, path, body=None, user_id=None):
         return json.loads(e.read())
 
 
-def get(path, user_id=None):
-    return api_request("GET", path, user_id=user_id)
+def get(path, **kwargs):
+    return api_request("GET", path, **kwargs)
 
 
-def post(path, body=None, user_id=None):
-    return api_request("POST", path, body=body, user_id=user_id)
+def post(path, body=None, **kwargs):
+    return api_request("POST", path, body=body, **kwargs)
 
 
 def print_team(team):
@@ -72,47 +110,43 @@ def print_team(team):
     print(f"    {team['color']}: {players}")
 
 
-# ─── Start ───
+# ─── Setup admin ───
 
 print("=== Full game flow test ===")
 print(f"  API: {API}")
-print(f"  Admin: {ADMIN_ID}")
+
+admins = supabase_query("users", "role=eq.admin&clerk_id=not.is.null&limit=1")
+if not admins:
+    print("  No admin with clerk_id found. Set one up first.")
+    sys.exit(1)
+
+admin = admins[0]
+ADMIN_TOKEN = get_clerk_sign_in_token(admin["clerk_id"])
+print(f"  Admin: {admin['first_name']} {admin['last_name']}")
 
 # ─── Create waitlist ───
 
 print("\n--- Creating waitlist ---")
-waitlist = post("/waitlist", user_id=ADMIN_ID)
+waitlist = post("/waitlist", bearer_token=ADMIN_TOKEN)
 waitlist_id = waitlist["id"]
-passcode = waitlist["passcode"]
+passcode = waitlist.get("passcode", "")
 print(f"  Waitlist: {waitlist_id}")
 print(f"  Passcode: {passcode}")
 
-# ─── Generate join token ───
+# ─── Create and join players (as guests, via passcode) ───
 
-print("\n--- Generating join token ---")
-token_result = post(f"/waitlist/{waitlist_id}/token", user_id=ADMIN_ID)
-if "error" in token_result:
-    print(f"  ERROR: {token_result['error']}")
-    sys.exit(1)
-token = token_result["token"]
-print(f"  Token: {token}")
-
-# ─── Create and join players ───
-
-print(f"\n--- Creating {len(PLAYERS)} players ---")
+print(f"\n--- Creating {NUM_PLAYERS} players ---")
 player_ids = []
-for i, (first, last) in enumerate(PLAYERS):
-    user = post("/users", body={
-        "first_name": first,
-        "last_name": last,
-        "phone": f"555100{i+1:04d}",
-    })
+for i in range(NUM_PLAYERS):
+    first = fake.first_name_female()
+    last = fake.last_name()
+    user = post("/users", body={"first_name": first, "last_name": last})
     uid = user["id"]
     player_ids.append(uid)
 
     result = post(
-        f"/waitlist/{waitlist_id}/join-token",
-        body={"token": token},
+        f"/waitlist/{waitlist_id}/join",
+        body={"passcode": passcode},
         user_id=uid,
     )
     status = "joined" if "id" in result else result.get("error", "ok")
@@ -122,7 +156,7 @@ for i, (first, last) in enumerate(PLAYERS):
 # ─── Form teams ───
 
 print("\n--- Forming Team 1 ---")
-team1_result = post(f"/waitlist/{waitlist_id}/form-team", user_id=ADMIN_ID)
+team1_result = post(f"/waitlist/{waitlist_id}/form-team", bearer_token=ADMIN_TOKEN)
 if "error" in team1_result:
     print(f"  ERROR: {team1_result['error']}")
     sys.exit(1)
@@ -130,7 +164,7 @@ team1 = team1_result["team"]
 print(f"  {team1['color']} team: {', '.join(p['user']['first_name'] + ' ' + p['user']['last_name'][0] + '.' for p in team1_result['players'])}")
 
 print("\n--- Forming Team 2 ---")
-team2_result = post(f"/waitlist/{waitlist_id}/form-team", user_id=ADMIN_ID)
+team2_result = post(f"/waitlist/{waitlist_id}/form-team", bearer_token=ADMIN_TOKEN)
 if "error" in team2_result:
     print(f"  ERROR: {team2_result['error']}")
     sys.exit(1)
@@ -144,7 +178,7 @@ game = post("/games", body={
     "waitlist_id": waitlist_id,
     "team1_id": team1["id"],
     "team2_id": team2["id"],
-}, user_id=ADMIN_ID)
+}, bearer_token=ADMIN_TOKEN)
 game_id = game["id"]
 print(f"  Game ID: {game_id}")
 
@@ -159,7 +193,7 @@ print(f"    Status: {game_detail['status']}")
 # ─── Queue state ───
 
 print("\n--- Queue state ---")
-wl_state = get(f"/waitlist/{waitlist_id}", user_id=ADMIN_ID)
+wl_state = get(f"/waitlist/{waitlist_id}")
 queue = wl_state["queue"]
 print(f"  {len(queue)} players in queue:")
 for i, p in enumerate(queue):
@@ -170,7 +204,7 @@ for i, p in enumerate(queue):
 print(f"\n--- Completing game ({team1['color']} wins) ---")
 complete = post(f"/games/{game_id}/complete", body={
     "winner_id": team1["id"],
-}, user_id=ADMIN_ID)
+}, bearer_token=ADMIN_TOKEN)
 
 if "error" in complete:
     print(f"  ERROR: {complete['error']}")
@@ -180,34 +214,21 @@ print(f"  Streak: {complete['streak']}")
 print(f"  Maxed: {complete['streak_maxed']}")
 print(f"  Players needed: {complete['players_needed']}")
 
-# ─── Next game (winning team stays) ───
+# ─── Check auto-advance ───
 
-print(f"\n--- Starting next game ({team1['color']} stays) ---")
-next_result = post(f"/games/{game_id}/next-game", body={
-    "staying_team_id": team1["id"],
-}, user_id=ADMIN_ID)
+print(f"\n--- Checking auto-advance ---")
+time.sleep(0.5)
+wl_state = get(f"/waitlist/{waitlist_id}")
 
-if "error" in next_result:
-    print(f"  ERROR: {next_result['error']}")
-    sys.exit(1)
+if wl_state.get("activeGame"):
+    ag = wl_state["activeGame"]
+    print(f"  Next game auto-started!")
+    print_team(ag["team1"])
+    print_team(ag["team2"])
+elif wl_state.get("stagedTeams"):
+    print(f"  {len(wl_state['stagedTeams'])} teams staged, waiting for more players")
+else:
+    print(f"  No auto-advance (not enough players in queue)")
 
-next_game = next_result["game"]
-challenger = next_result.get("challenger_team", {})
-print(f"  New Game ID: {next_game['id']}")
-print(f"  Challenger: {challenger.get('color', '?')}")
-if "players" in challenger:
-    for p in challenger["players"]:
-        u = p.get("user", {})
-        print(f"    - {u.get('first_name', '?')} {u.get('last_name', '?')[0]}.")
-
-# ─── Done ───
-
-print("\n=== Full game flow complete ===")
-print(f"\n  Game 2 is now in progress: {next_game['id']}")
-print(f"  Staying team: {team1['color']} ({team1['id']})")
-print(f"  Challenger: {challenger.get('color', '?')} ({challenger.get('id', '?')})")
-print(f"\n  To end game 2 ({team1['color']} wins again):")
-print(f"    python -c \"import urllib.request,json; print(json.loads(urllib.request.urlopen(urllib.request.Request('{API}/games/{next_game['id']}/complete', json.dumps({{'winner_id':'{team1['id']}'}}).encode(), {{'Content-Type':'application/json','x-user-id':'{ADMIN_ID}'}}, method='POST')).read()))\"")
-print(f"\n  Or with HTTPie:")
-print(f"    http POST {API}/games/{next_game['id']}/complete x-user-id:{ADMIN_ID} winner_id={team1['id']}")
-print(f"    http POST {API}/games/{next_game['id']}/next-game x-user-id:{ADMIN_ID} staying_team_id={team1['id']}")
+print(f"\n=== Full game flow complete ===")
+print(f"  Waitlist: {waitlist_id}")

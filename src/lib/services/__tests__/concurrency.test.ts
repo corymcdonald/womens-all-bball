@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  MockDB,
-  seedPlayers,
   formTeam,
   markTeamCompleted,
   markTeamStaged,
+  MockDB,
+  seedPlayers,
 } from "./test-helpers";
 
 let db: MockDB;

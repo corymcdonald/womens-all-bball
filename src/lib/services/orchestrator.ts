@@ -1,6 +1,7 @@
 import { publishEvent } from "@/lib/ably";
 import { supabase } from "@/lib/supabase";
 import { getWaitingQueue } from "@/lib/waitlist";
+import { ServiceError } from "./service-error";
 import {
   createGame,
   declareWinner,
@@ -142,7 +143,7 @@ export async function declareWinnerAndAdvance(
     .single();
 
   if (!game) {
-    throw new Error("Game not found");
+    throw new ServiceError("Game not found", 404);
   }
 
   return withLock(`waitlist:${game.waitlist_id}`, async () => {

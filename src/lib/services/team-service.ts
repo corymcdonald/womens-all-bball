@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { getWaitingQueue, transitionStatus } from "@/lib/waitlist";
+import { getWaitingQueue } from "@/lib/waitlist";
 import { ServiceError } from "./service-error";
 
 export const TEAM_SIZE = 5;
@@ -71,9 +71,13 @@ export async function formTeamFromQueue(
     })),
   );
 
-  for (const wp of nextFive) {
-    await transitionStatus(wp.id, "waiting", "playing");
-  }
+  // Batch transition all selected players from waiting to playing
+  const playerIds = nextFive.map((wp) => wp.id);
+  await supabase
+    .from("waitlist_players")
+    .update({ status: "playing" })
+    .in("id", playerIds)
+    .eq("status", "waiting");
 
   return {
     team,

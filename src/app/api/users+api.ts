@@ -1,10 +1,10 @@
-import { requireAdmin, verifyClerkToken } from "@/lib/auth";
 import { handleRouteError } from "@/lib/api-error";
+import { requireAdmin, verifyClerkToken } from "@/lib/auth";
 import {
-  lookupUserByClerkId,
-  searchUsersByName,
   listUsersByRole,
+  lookupUserByClerkId,
   registerOrUpsertUser,
+  searchUsersByName,
 } from "@/lib/services/user-service";
 
 // GET /api/users?q=search&role=admin&clerk_id=xxx
@@ -33,7 +33,10 @@ export async function GET(request: Request) {
     }
 
     return Response.json(
-      { error: "Query parameter required: ?q=name, ?role=admin, or ?clerk_id=xxx" },
+      {
+        error:
+          "Query parameter required: ?q=name, ?role=admin, or ?clerk_id=xxx",
+      },
       { status: 400 },
     );
   } catch (e) {

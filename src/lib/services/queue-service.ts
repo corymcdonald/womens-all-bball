@@ -34,6 +34,21 @@ export async function addToQueue(waitlistId: string, userId: string) {
 }
 
 /**
+ * Pull the next waiting player onto a team as a replacement.
+ */
+async function swapReplacement(waitlistId: string, teamId: string) {
+  const nextPlayer = await getNextWaitingPlayer(waitlistId);
+  if (!nextPlayer) return null;
+
+  const replacement = await transitionStatus(nextPlayer.id, "waiting", "playing");
+  await supabase.from("team_players").insert({
+    team_id: teamId,
+    user_id: nextPlayer.user_id,
+  });
+  return replacement;
+}
+
+/**
  * Transition a player's status and optionally swap a replacement onto their team.
  * Shared by: mark-absent, mark-left endpoints.
  */
@@ -60,22 +75,11 @@ export async function removeFromPlay(
     targetStatus,
   );
 
-  // If the player was on a team and we have a teamId, swap in replacement
-  let replacement = null;
   const shouldReplace =
     (targetStatus === "absent" && player.status === "waiting" && teamId) ||
     (targetStatus === "left" && player.status === "playing" && teamId);
 
-  if (shouldReplace) {
-    const nextPlayer = await getNextWaitingPlayer(waitlistId);
-    if (nextPlayer) {
-      replacement = await transitionStatus(nextPlayer.id, "waiting", "playing");
-      await supabase.from("team_players").insert({
-        team_id: teamId,
-        user_id: nextPlayer.user_id,
-      });
-    }
-  }
+  const replacement = shouldReplace ? await swapReplacement(waitlistId, teamId!) : null;
 
   return { transitioned, replacement };
 }

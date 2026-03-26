@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { ServiceError } from "./service-error";
 
 const DEFAULT_TTL_MS = 10_000; // 10 seconds
 const RETRY_DELAY_MS = 100;
@@ -38,12 +39,13 @@ async function acquireLock(key: string, ttlMs = DEFAULT_TTL_MS): Promise<void> {
       error.code,
       error.message,
     );
-    throw new Error(`Lock error (${error.code}): ${error.message}`);
+    throw new ServiceError(`Lock error (${error.code}): ${error.message}`, 500);
   }
 
   console.error(`[lock] timeout acquiring "${key}"`);
-  throw new Error(
+  throw new ServiceError(
     `Lock timeout: could not acquire "${key}" after ${MAX_RETRIES * RETRY_DELAY_MS}ms`,
+    503,
   );
 }
 

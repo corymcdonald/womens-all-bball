@@ -1,9 +1,9 @@
 import { publishEvent } from "@/lib/ably";
 import { handleRouteError } from "@/lib/api-error";
 import { requireAdmin } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
-import { createGame } from "@/lib/services/game-service";
 import { posthogServer } from "@/lib/posthog-server";
+import { createGame } from "@/lib/services/game-service";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

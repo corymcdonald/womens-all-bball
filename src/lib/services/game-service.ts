@@ -1,8 +1,7 @@
 import { supabase } from "@/lib/supabase";
-import { transitionStatus } from "@/lib/waitlist";
 import { ServiceError } from "./service-error";
 import { getStreak } from "./streak";
-import { transitionTeamStatus } from "./team-service";
+import { TEAM_SIZE, transitionTeamStatus } from "./team-service";
 
 /**
  * Create a game by snapshotting the waitlist's current settings.
@@ -44,6 +43,7 @@ export async function createGame(
 
 /**
  * Mark all players on a team as "completed" in waitlist_players.
+ * Uses a batch update instead of individual transitions.
  */
 export async function markTeamPlayersCompleted(
   waitlistId: string,
@@ -54,20 +54,16 @@ export async function markTeamPlayersCompleted(
     .select("user_id")
     .eq("team_id", teamId);
 
-  for (const tp of players ?? []) {
-    // Use .limit(1) instead of .single() to avoid errors on multiple rows
-    const { data: wps } = await supabase
-      .from("waitlist_players")
-      .select("id, status")
-      .eq("waitlist_id", waitlistId)
-      .eq("user_id", tp.user_id)
-      .eq("status", "playing")
-      .limit(1);
+  if (!players?.length) return;
 
-    if (wps && wps.length > 0) {
-      await transitionStatus(wps[0].id, "playing", "completed");
-    }
-  }
+  const userIds = players.map((tp) => tp.user_id);
+
+  await supabase
+    .from("waitlist_players")
+    .update({ status: "completed" })
+    .eq("waitlist_id", waitlistId)
+    .in("user_id", userIds)
+    .eq("status", "playing");
 }
 
 export type DeclareWinnerResult = {
@@ -82,12 +78,30 @@ export type DeclareWinnerResult = {
 };
 
 /**
- * Declare a winner:
- *   1. Mark game as completed with winner
- *   2. Calculate streak (team1 = staying team, team2 = challenger)
- *   3. Loser team → status 'completed', players → 'completed'
- *   4. If streak maxed: winner team → 'completed', players → 'completed'
- *   5. If streak NOT maxed: winner team → 'staged' (stays on for next game)
+ * Rotate teams after a game: loser completes, winner either stages or completes.
+ * Returns the staying team ID (null if both rotate off).
+ */
+async function rotateTeams(
+  waitlistId: string,
+  winnerId: string,
+  loserId: string,
+  streakMaxed: boolean,
+): Promise<string | null> {
+  await transitionTeamStatus(loserId, "completed");
+  await markTeamPlayersCompleted(waitlistId, loserId);
+
+  if (streakMaxed) {
+    await transitionTeamStatus(winnerId, "completed");
+    await markTeamPlayersCompleted(waitlistId, winnerId);
+    return null;
+  }
+
+  await transitionTeamStatus(winnerId, "staged");
+  return winnerId;
+}
+
+/**
+ * Declare a winner: validate, update game, compute streak, rotate teams.
  */
 export async function declareWinner(
   gameId: string,
@@ -108,7 +122,6 @@ export async function declareWinner(
     throw new ServiceError("winner_id must be one of the game's teams", 400);
   }
 
-  // Mark game as completed
   const { error: updateError } = await supabase
     .from("games")
     .update({ status: "completed", winner_id: winnerTeamId })
@@ -121,24 +134,15 @@ export async function declareWinner(
   const losingTeamId =
     winnerTeamId === game.team1_id ? game.team2_id : game.team1_id;
 
-  // Compute streak from game history (this game is now completed)
   const { streak } = await getStreak(game.waitlist_id);
-  const maxWins = game.max_wins;
-  const streakMaxed = streak >= maxWins;
+  const streakMaxed = streak >= game.max_wins;
 
-  // Loser always rotates off
-  await transitionTeamStatus(losingTeamId, "completed");
-  await markTeamPlayersCompleted(game.waitlist_id, losingTeamId);
-
-  let stayingTeamId: string | null = null;
-
-  if (streakMaxed) {
-    await transitionTeamStatus(winnerTeamId, "completed");
-    await markTeamPlayersCompleted(game.waitlist_id, winnerTeamId);
-  } else {
-    await transitionTeamStatus(winnerTeamId, "staged");
-    stayingTeamId = winnerTeamId;
-  }
+  const stayingTeamId = await rotateTeams(
+    game.waitlist_id,
+    winnerTeamId,
+    losingTeamId,
+    streakMaxed,
+  );
 
   return {
     gameId,
@@ -148,6 +152,6 @@ export async function declareWinner(
     streak,
     streakMaxed,
     stayingTeamId,
-    playersNeeded: streakMaxed ? 10 : 5,
+    playersNeeded: streakMaxed ? TEAM_SIZE * 2 : TEAM_SIZE,
   };
 }

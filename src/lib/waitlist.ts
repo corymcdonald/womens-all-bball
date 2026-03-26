@@ -1,3 +1,4 @@
+import { ServiceError } from "./services/service-error";
 import { supabase } from "./supabase";
 
 // Valid state transitions for waitlist_players
@@ -61,7 +62,10 @@ export async function transitionStatus(
   newStatus: string,
 ) {
   if (!canTransition(currentStatus, newStatus)) {
-    throw new Error(`Invalid transition: ${currentStatus} -> ${newStatus}`);
+    throw new ServiceError(
+      `Invalid transition: ${currentStatus} -> ${newStatus}`,
+      400,
+    );
   }
 
   const { data, error } = await supabase

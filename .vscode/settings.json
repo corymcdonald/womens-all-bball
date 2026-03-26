@@ -4,5 +4,5 @@
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
   },
-  "cSpell.words": ["Pressable"]
+  "cSpell.words": ["fkey", "posthog", "Pressable", "supabase", "waitlist"]
 }
