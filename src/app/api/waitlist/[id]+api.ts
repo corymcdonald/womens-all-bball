@@ -1,98 +1,17 @@
 import { publishEvent } from "@/lib/ably";
 import { requireAdmin } from "@/lib/auth";
 import { posthogServer } from "@/lib/posthog-server";
-import { getStreak } from "@/lib/services/streak";
+import { getWaitlistDetail } from "@/lib/services/waitlist-service";
 import { supabase } from "@/lib/supabase";
-import { getWaitingQueue } from "@/lib/waitlist";
 
 export async function GET(request: Request, { id }: { id: string }) {
-  const { data: waitlist, error: waitlistError } = await supabase
-    .from("waitlists")
-    .select("id, created_at, max_wins, game_duration_minutes")
-    .eq("id", id)
-    .single();
+  const detail = await getWaitlistDetail(id);
 
-  if (waitlistError || !waitlist) {
+  if (!detail) {
     return Response.json({ error: "Waitlist not found" }, { status: 404 });
   }
 
-  const queue = await getWaitingQueue(id);
-
-  // Count playing from teams with status 'staged' or 'playing' (not from waitlist_players
-  // which can accumulate stale "playing" rows)
-  const { data: activeTeams } = await supabase
-    .from("teams")
-    .select("id, team_players(user_id, users(id, first_name, last_name))")
-    .eq("waitlist_id", id)
-    .in("status", ["staged", "playing"]);
-
-  const playing = (activeTeams ?? []).flatMap((t) =>
-    (t.team_players ?? []).map((tp: any) => ({
-      user_id: tp.user_id,
-      users: tp.users,
-    })),
-  );
-
-  // Active game with teams
-  const { data: activeGame } = await supabase
-    .from("games")
-    .select(
-      `*,
-      team1:teams!games_team1_id_fkey(id, color, team_players(user_id, users(id, first_name, last_name))),
-      team2:teams!games_team2_id_fkey(id, color, team_players(user_id, users(id, first_name, last_name)))`,
-    )
-    .eq("waitlist_id", id)
-    .eq("status", "in_progress")
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  const currentGame = activeGame?.[0] ?? null;
-
-  // Staged teams — direct query on teams.status
-  const { data: stagedTeamsRaw } = await supabase
-    .from("teams")
-    .select(
-      "id, color, team_players(user_id, users(id, first_name, last_name))",
-    )
-    .eq("waitlist_id", id)
-    .eq("status", "staged")
-    .order("created_at", { ascending: true });
-
-  const stagedTeams = (stagedTeamsRaw ?? []).map((t) => ({
-    id: t.id,
-    color: t.color,
-    players: (t.team_players ?? []).map((tp: any) => ({
-      user_id: tp.user_id,
-      users: tp.users,
-    })),
-  }));
-
-  // Compute streak from game history
-  const { streak: rawStreak, teamId: rawStreakTeamId } = await getStreak(id);
-
-  // If the streak team is no longer staged or playing, the streak has reset
-  const streakTeamStillActive =
-    rawStreakTeamId &&
-    (stagedTeams.some((t) => t.id === rawStreakTeamId) ||
-      (currentGame &&
-        (currentGame.team1.id === rawStreakTeamId ||
-          currentGame.team2.id === rawStreakTeamId)));
-
-  const streak = streakTeamStillActive ? rawStreak : 0;
-  const streakTeamId = streakTeamStillActive ? rawStreakTeamId : null;
-  const streakMaxed = streak >= (waitlist as any).max_wins;
-  const upNextCount = streakMaxed ? 10 : 5;
-
-  return Response.json({
-    waitlist: { ...waitlist, current_streak: streak },
-    queue,
-    playing: playing ?? [],
-    activeGame: currentGame,
-    stagedTeams,
-    streakTeamId,
-    upNext: queue.slice(0, upNextCount),
-    upNextCount,
-  });
+  return Response.json(detail);
 }
 
 // PATCH /api/waitlist/:id — update waitlist settings (admin only)

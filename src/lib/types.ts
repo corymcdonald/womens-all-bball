@@ -58,9 +58,9 @@ export type WaitlistDetail = {
     current_streak: number;
   };
   queue: WaitlistPlayer[];
-  playing: Array<{ id: string; user_id: string; users: UserSummary }>;
+  playing: { id: string; user_id: string; users: UserSummary }[];
   activeGame: ActiveGame | null;
-  upNext: Array<{ id: string; user_id: string; users: UserSummary }>;
+  upNext: { id: string; user_id: string; users: UserSummary }[];
   streakTeamId: string | null;
   upNextCount: number;
   stagedTeams: StagedTeam[];

@@ -3,7 +3,7 @@
  * Mimics the data model with teams.status for direct state tracking.
  */
 
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 
 export class MockDB {
   tables: Record<string, Row[]> = {

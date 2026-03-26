@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { posthogServer } from "@/lib/posthog-server";
 import { declareWinnerAndAdvance } from "@/lib/services/orchestrator";
-import { ServiceError } from "@/lib/services/service-error";
+import { handleRouteError } from "@/lib/api-error";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const admin = await requireAdmin(request);
@@ -37,12 +37,6 @@ export async function POST(request: Request, { id }: { id: string }) {
       players_needed: result.playersNeeded,
     });
   } catch (e) {
-    if (e instanceof ServiceError) {
-      return Response.json({ error: e.message }, { status: e.statusCode });
-    }
-    return Response.json(
-      { error: e instanceof Error ? e.message : "Failed" },
-      { status: 500 },
-    );
+    return handleRouteError(e);
   }
 }

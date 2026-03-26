@@ -1,8 +1,8 @@
 import { publishEvent } from "@/lib/ably";
+import { handleRouteError } from "@/lib/api-error";
 import { requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { createGame } from "@/lib/services/game-service";
-import { ServiceError } from "@/lib/services/service-error";
 import { posthogServer } from "@/lib/posthog-server";
 
 export async function GET(request: Request) {
@@ -64,11 +64,6 @@ export async function POST(request: Request) {
     });
     return Response.json(game, { status: 201 });
   } catch (e) {
-    if (e instanceof ServiceError) {
-      return Response.json({ error: e.message }, { status: e.statusCode });
-    }
-    const msg = e instanceof Error ? e.message : "Internal error";
-    console.error("[api]", msg, e);
-    return Response.json({ error: msg }, { status: 500 });
+    return handleRouteError(e);
   }
 }

@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { joinAndAdvance } from "@/lib/services/orchestrator";
-import { ServiceError } from "@/lib/services/service-error";
+import { handleRouteError } from "@/lib/api-error";
 import { supabase } from "@/lib/supabase";
 import { hasActiveRow } from "@/lib/waitlist";
 import { posthogServer } from "@/lib/posthog-server";
@@ -54,11 +54,6 @@ export async function POST(request: Request, { id }: { id: string }) {
     });
     return Response.json(player, { status: 201 });
   } catch (e) {
-    if (e instanceof ServiceError) {
-      return Response.json({ error: e.message }, { status: e.statusCode });
-    }
-    const msg = e instanceof Error ? e.message : "Internal error";
-    console.error("[api]", msg, e);
-    return Response.json({ error: msg }, { status: 500 });
+    return handleRouteError(e);
   }
 }

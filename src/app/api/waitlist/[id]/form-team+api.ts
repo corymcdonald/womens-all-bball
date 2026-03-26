@@ -1,4 +1,5 @@
 import { publishEvent } from "@/lib/ably";
+import { handleRouteError } from "@/lib/api-error";
 import { requireAdmin } from "@/lib/auth";
 import { posthogServer } from "@/lib/posthog-server";
 import { formTeamFromQueue, getUsedColors } from "@/lib/services/team-service";
@@ -30,9 +31,6 @@ export async function POST(request: Request, { id }: { id: string }) {
     await publishEvent(`waitlist:${id}`, "updated");
     return Response.json(result);
   } catch (e) {
-    return Response.json(
-      { error: e instanceof Error ? e.message : "Failed" },
-      { status: 500 },
-    );
+    return handleRouteError(e);
   }
 }

@@ -9,10 +9,10 @@ import { useTheme } from "@/hooks/use-theme";
 type StagedTeam = {
   id: string;
   color: string;
-  players: Array<{
+  players: {
     user_id: string;
     users: { id: string; first_name: string; last_name: string };
-  }>;
+  }[];
 };
 
 type Props = {

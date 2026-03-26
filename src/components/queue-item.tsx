@@ -76,7 +76,7 @@ export function QueueItem({
           style={styles.imHereButton}
         >
           <ThemedText type="small" style={styles.imHereText}>
-            I'm here!
+            {"I'm here!"}
           </ThemedText>
         </TouchableOpacity>
       )}

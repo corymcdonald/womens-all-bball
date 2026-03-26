@@ -171,7 +171,7 @@ export function JoinSection({
               ]}
             >
               <ThemedText style={styles.scannerHint}>
-                Point your camera at the QR code on the staff's screen
+                {"Point your camera at the QR code on the staff's screen"}
               </ThemedText>
             </View>
           </View>

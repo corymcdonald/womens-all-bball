@@ -2,7 +2,7 @@ import { publishEvent } from "@/lib/ably";
 import { getUserId, isAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { markPresent } from "@/lib/services/queue-service";
-import { ServiceError } from "@/lib/services/service-error";
+import { handleRouteError } from "@/lib/api-error";
 import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
@@ -52,12 +52,6 @@ export async function POST(request: Request, { id }: { id: string }) {
     });
     return Response.json(updated);
   } catch (e) {
-    if (e instanceof ServiceError) {
-      return Response.json({ error: e.message }, { status: e.statusCode });
-    }
-    return Response.json(
-      { error: e instanceof Error ? e.message : "Failed" },
-      { status: 500 },
-    );
+    return handleRouteError(e);
   }
 }

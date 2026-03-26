@@ -43,10 +43,10 @@ export default function HomeScreen() {
   const [editMode, setEditMode] = useState(false);
   const [pendingWinner, setPendingWinner] = useState<{
     winnerColor: string;
-    winnerPlayers: Array<{
+    winnerPlayers: {
       user_id: string;
       users: { first_name: string; last_name: string };
-    }>;
+    }[];
     winnerSide: "left" | "right";
   } | null>(null);
 
@@ -286,7 +286,7 @@ export default function HomeScreen() {
 
       {wl.isInQueue && (
         <View style={styles.statusSection}>
-          <ThemedText type="smallBold">You're in the queue!</ThemedText>
+          <ThemedText type="smallBold">{"You're in the queue!"}</ThemedText>
           <TouchableOpacity onPress={wl.leave}>
             <ThemedText type="small" style={{ color: "#ef4444" }}>
               Leave Queue
@@ -297,7 +297,7 @@ export default function HomeScreen() {
 
       {wl.isPlaying && (
         <View style={styles.statusSection}>
-          <ThemedText type="smallBold">You're on the court!</ThemedText>
+          <ThemedText type="smallBold">{"You're on the court!"}</ThemedText>
         </View>
       )}
     </View>

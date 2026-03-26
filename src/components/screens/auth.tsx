@@ -23,7 +23,7 @@ type Mode = "sign-in" | "sign-up";
 function formatClerkError(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "object" && e !== null && "errors" in e) {
-    const errors = (e as { errors: Array<{ longMessage?: string }> }).errors;
+    const errors = (e as { errors: { longMessage?: string }[] }).errors;
     return errors[0]?.longMessage ?? "An error occurred";
   }
   return "An error occurred";
@@ -397,7 +397,7 @@ function SignInForm({
 
           <View style={styles.switchRow}>
             <ThemedText themeColor="textSecondary">
-              Don't have an account?
+              {"Don't have an account?"}
             </ThemedText>
             <TouchableOpacity onPress={onSwitchMode}>
               <ThemedText style={styles.linkText}>Sign Up</ThemedText>

@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { getWaitingQueue, transitionStatus } from "@/lib/waitlist";
+import { ServiceError } from "./service-error";
 
 export const TEAM_SIZE = 5;
 export const DEFAULT_COLORS = ["White", "Blue"] as const;
@@ -60,7 +61,7 @@ export async function formTeamFromQueue(
     .single();
 
   if (teamError || !team) {
-    throw new Error("Failed to create team");
+    throw new ServiceError("Failed to create team", 500);
   }
 
   await supabase.from("team_players").insert(

@@ -1,11 +1,17 @@
 import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+  Animated,
+  type DimensionValue,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 type SkeletonProps = {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: ViewStyle;
@@ -43,7 +49,7 @@ export function Skeleton({
     <Animated.View
       style={[
         {
-          width: width as any,
+          width,
           height,
           borderRadius,
           backgroundColor: theme.backgroundSelected,

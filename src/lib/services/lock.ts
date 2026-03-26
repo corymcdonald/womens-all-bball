@@ -23,15 +23,11 @@ async function acquireLock(key: string, ttlMs = DEFAULT_TTL_MS): Promise<void> {
       .insert({ key, expires_at: expiresAt });
 
     if (!error) {
-      console.log(`[lock] acquired "${key}" (attempt ${attempt + 1})`);
       return;
     }
 
     // 23505 = unique violation → lock held by someone else
     if (error.code === "23505") {
-      if (attempt % 10 === 0) {
-        console.log(`[lock] waiting for "${key}" (attempt ${attempt + 1})`);
-      }
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
       continue;
     }
@@ -55,8 +51,6 @@ async function releaseLock(key: string): Promise<void> {
   const { error } = await supabase.from("locks").delete().eq("key", key);
   if (error) {
     console.error(`[lock] release error for "${key}":`, error.message);
-  } else {
-    console.log(`[lock] released "${key}"`);
   }
 }
 

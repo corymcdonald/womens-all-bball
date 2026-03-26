@@ -44,18 +44,18 @@ export default function SettingsScreen() {
 
   // Admin: current admins list
   const [admins, setAdmins] = useState<
-    Array<{ id: string; first_name: string; last_name: string }>
+    { id: string; first_name: string; last_name: string }[]
   >([]);
 
   // Admin: user search
   const [adminSearch, setAdminSearch] = useState("");
   const [searchResults, setSearchResults] = useState<
-    Array<{
+    {
       id: string;
       first_name: string;
       last_name: string;
       role: string;
-    }>
+    }[]
   >([]);
 
   const fetchAdminData = useCallback(async () => {

@@ -11,8 +11,6 @@ import type {
 
 const API_BASE = "/api";
 
-// Re-export types that consumers import from api.ts
-export type { GameResult, GamesResponse } from "./types";
 
 // Clerk token getter — set by the app when a Clerk session is active
 let _getClerkToken: (() => Promise<string | null>) | null = null;
