@@ -2,15 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { getStoredUser, setStoredUser, clearStoredUser } from "./user-store";
 import { getUser } from "./api";
 import { posthog } from "./posthog";
-
-type User = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  clerk_id: string | null;
-  role: "player" | "admin";
-};
+import type { User } from "./types";
 
 type UserContextType = {
   user: User | null;

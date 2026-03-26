@@ -25,6 +25,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useUser } from "@/lib/user-context";
 import { registerUser, getUserByClerkId } from "@/lib/api";
 import { posthog } from "@/lib/posthog";
+import type { User } from "@/lib/types";
 
 type AuthGateContextType = {
   requireAuth: (onAuthenticated: () => void) => void;
@@ -113,14 +114,7 @@ function RegisterForm({
 }: {
   onDismiss: () => void;
   onSwitchToSignIn: () => void;
-  onRegister: (user: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string | null;
-    clerk_id: string | null;
-    role: "player" | "admin";
-  }) => Promise<void>;
+  onRegister: (user: User) => Promise<void>;
 }) {
   const theme = useTheme();
   const [firstName, setFirstName] = useState("");

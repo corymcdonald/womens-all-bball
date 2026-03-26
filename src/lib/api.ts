@@ -1,6 +1,18 @@
 import { getStoredUser } from "./user-store";
+import type {
+  User,
+  Waitlist,
+  WaitlistDetail,
+  GameResult,
+  GamesResponse,
+  CompleteGameResult,
+  JoinToken,
+} from "./types";
 
 const API_BASE = "/api";
+
+// Re-export types that consumers import from api.ts
+export type { GameResult, GamesResponse } from "./types";
 
 // Clerk token getter — set by the app when a Clerk session is active
 let _getClerkToken: (() => Promise<string | null>) | null = null;
@@ -36,26 +48,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
-// Users
-export function getUser(id: string) {
-  return request<{
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string | null;
-    clerk_id: string | null;
-    role: "player" | "admin";
-  }>(`/users/${id}`);
-}
+// ─── Users ───
 
-type UserResult = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  clerk_id: string | null;
-  role: "player" | "admin";
-};
+export function getUser(id: string) {
+  return request<User>(`/users/${id}`);
+}
 
 export function updateUser(
   id: string,
@@ -66,7 +63,7 @@ export function updateUser(
     role?: string;
   },
 ) {
-  return request<UserResult>(`/users/${id}`, {
+  return request<User>(`/users/${id}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   });
@@ -77,11 +74,11 @@ export function deleteUser(id: string) {
 }
 
 export function searchUsers(query: string) {
-  return request<UserResult[]>(`/users?q=${encodeURIComponent(query)}`);
+  return request<User[]>(`/users?q=${encodeURIComponent(query)}`);
 }
 
 export function listAdmins() {
-  return request<UserResult[]>("/users?role=admin");
+  return request<User[]>("/users?role=admin");
 }
 
 export function promoteUser(id: string) {
@@ -94,106 +91,42 @@ export function registerUser(body: {
   email?: string;
   clerk_id?: string;
 }) {
-  return request<UserResult>("/users", {
+  return request<User>("/users", {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
 export function getUserByClerkId(clerkId: string) {
-  return request<UserResult>(`/users?clerk_id=${encodeURIComponent(clerkId)}`);
+  return request<User>(`/users?clerk_id=${encodeURIComponent(clerkId)}`);
 }
 
 export function linkClerkId(id: string, clerkId: string) {
-  return request<UserResult>(`/users/${id}`, {
+  return request<User>(`/users/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ clerk_id: clerkId }),
   });
 }
 
-// Waitlists
+// ─── Waitlists ───
+
 export function createWaitlist(passcode?: string) {
-  return request<{ id: string; passcode: string; created_at: string }>(
-    "/waitlist",
-    {
-      method: "POST",
-      body: JSON.stringify(passcode ? { passcode } : {}),
-    },
-  );
+  return request<Waitlist>("/waitlist", {
+    method: "POST",
+    body: JSON.stringify(passcode ? { passcode } : {}),
+  });
 }
 
 export function listWaitlists() {
-  return request<Array<{ id: string; passcode: string; created_at: string }>>(
-    "/waitlist",
-  );
+  return request<Waitlist[]>("/waitlist");
 }
 
 export function getWaitlist(id: string) {
-  return request<{
-    waitlist: {
-      id: string;
-      created_at: string;
-      max_wins: number;
-      game_duration_minutes: number;
-      current_streak: number;
-    };
-    queue: Array<{
-      id: string;
-      user_id: string;
-      priority: number | null;
-      status: string;
-      created_at: string;
-      users: { id: string; first_name: string; last_name: string };
-    }>;
-    playing: Array<{
-      id: string;
-      user_id: string;
-      users: { id: string; first_name: string; last_name: string };
-    }>;
-    activeGame: {
-      id: string;
-      team1: {
-        id: string;
-        color: string;
-        team_players: Array<{
-          user_id: string;
-          users: { id: string; first_name: string; last_name: string };
-        }>;
-      };
-      team2: {
-        id: string;
-        color: string;
-        team_players: Array<{
-          user_id: string;
-          users: { id: string; first_name: string; last_name: string };
-        }>;
-      };
-      max_wins: number;
-      game_duration_minutes: number;
-    } | null;
-    upNext: Array<{
-      id: string;
-      user_id: string;
-      users: { id: string; first_name: string; last_name: string };
-    }>;
-    streakTeamId: string | null;
-    upNextCount: number;
-    stagedTeams: Array<{
-      id: string;
-      color: string;
-      players: Array<{
-        user_id: string;
-        users: { id: string; first_name: string; last_name: string };
-      }>;
-    }>;
-  }>(`/waitlist/${id}`);
+  return request<WaitlistDetail>(`/waitlist/${id}`);
 }
 
 export function generateJoinToken(id: string) {
-  return request<{ token: string; expires_at: string; ttl_seconds: number }>(
-    `/waitlist/${id}/token`,
-    { method: "POST" },
-  );
+  return request<JoinToken>(`/waitlist/${id}/token`, { method: "POST" });
 }
 
 export function joinWaitlistWithToken(id: string, token: string) {
@@ -218,7 +151,8 @@ export function rejoinWaitlist(id: string) {
   return request(`/waitlist/${id}/join`, { method: "POST" });
 }
 
-// Staff - Waitlist
+// ─── Staff — Waitlist ───
+
 export function updateWaitlistSettings(
   id: string,
   settings: { max_wins?: number; game_duration_minutes?: number },
@@ -288,37 +222,7 @@ export function addPlayer(
   });
 }
 
-// Games
-export type GameResult = {
-  id: string;
-  waitlist_id: string;
-  winner_id: string | null;
-  status: string;
-  created_at: string;
-  waitlist: { id: string; created_at: string };
-  team1: {
-    id: string;
-    color: string;
-    team_players: Array<{
-      user_id: string;
-      users: { id: string; first_name: string; last_name: string };
-    }>;
-  };
-  team2: {
-    id: string;
-    color: string;
-    team_players: Array<{
-      user_id: string;
-      users: { id: string; first_name: string; last_name: string };
-    }>;
-  };
-  winner: { id: string; color: string } | null;
-};
-
-export type GamesResponse = {
-  data: GameResult[];
-  cursor: string | null;
-};
+// ─── Games ───
 
 export function listGames(cursor?: string) {
   const params = new URLSearchParams();
@@ -332,14 +236,7 @@ export function getGame(id: string) {
 }
 
 export function completeGame(id: string, winnerId: string) {
-  return request<{
-    game_id: string;
-    winner_id: string;
-    losing_team_id: string;
-    streak: number;
-    streak_maxed: boolean;
-    players_needed: number;
-  }>(`/games/${id}/complete`, {
+  return request<CompleteGameResult>(`/games/${id}/complete`, {
     method: "POST",
     body: JSON.stringify({ winner_id: winnerId }),
   });

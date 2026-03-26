@@ -3,59 +3,26 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { Skeleton } from "@/components/skeleton";
-import {
-  TeamView,
-  type TeamPlayer,
-  styles as teamStyles,
-} from "@/components/team-view";
+import { TeamView, styles as teamStyles } from "@/components/team-view";
 import { COLOR_VALUES, TEAM_COLORS } from "@/constants/team-colors";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-
-type TeamData = {
-  id: string;
-  color: string;
-  team_players: Array<{
-    user_id: string;
-    users: { id: string; first_name: string; last_name: string };
-  }>;
-};
-
-type StagedTeamData = {
-  id: string;
-  color: string;
-  players: Array<{
-    user_id: string;
-    users: { id: string; first_name: string; last_name: string };
-  }>;
-};
+import type {
+  ActiveGame,
+  StagedTeam,
+  TeamPlayer,
+} from "@/lib/types";
 
 type Props = {
-  // Active game (if any)
-  activeGame?: {
-    id: string;
-    team1: TeamData;
-    team2: TeamData;
-    game_duration_minutes: number;
-    max_wins: number;
-  } | null;
+  activeGame?: ActiveGame | null;
   streak?: number;
   streakTeamId?: string | null;
-
-  // Staged teams (if no active game)
-  stagedTeams?: StagedTeamData[];
-
-  // Transition state: winner stays in place, loser's side becomes skeleton
+  stagedTeams?: StagedTeam[];
   pendingWinner?: {
     winnerColor: string;
-    winnerPlayers: Array<{
-      user_id: string;
-      users: { first_name: string; last_name: string };
-    }>;
+    winnerPlayers: TeamPlayer[];
     winnerSide: "left" | "right";
   } | null;
-
-  // Admin
   isAdmin: boolean;
   onDeclareWinner?: (gameId: string, winnerId: string) => void;
   onUpdateColor?: (teamId: string, color: string) => void;
@@ -162,13 +129,13 @@ export function GameCard({
   }
 
   // Normalize teams into a common shape
-  const normalizeGameTeam = (t: TeamData) => ({
+  const normalizeGameTeam = (t: ActiveGame["team1"]) => ({
     id: t.id,
     color: t.color,
     players: t.team_players,
   });
 
-  const normalizeStagedTeam = (t: StagedTeamData) => ({
+  const normalizeStagedTeam = (t: StagedTeam) => ({
     id: t.id,
     color: t.color,
     players: t.players,

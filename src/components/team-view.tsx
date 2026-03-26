@@ -3,11 +3,9 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { COLOR_VALUES } from "@/constants/team-colors";
 import { Spacing } from "@/constants/theme";
+import type { TeamPlayer } from "@/lib/types";
 
-export type TeamPlayer = {
-  user_id: string;
-  users: { first_name: string; last_name: string };
-};
+export type { TeamPlayer } from "@/lib/types";
 
 type Props = {
   color: string;

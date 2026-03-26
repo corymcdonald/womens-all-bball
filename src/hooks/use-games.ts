@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { type GameResult, listGames } from "@/lib/api";
+import type { GameResult } from "@/lib/types";
+import { listGames } from "@/lib/api";
 import { formatWaitlistDate } from "@/lib/format-date";
 
 export type GameWithStreak = GameResult & {

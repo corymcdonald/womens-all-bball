@@ -22,6 +22,7 @@ import { useUser } from "@/lib/user-context";
 import { formatWaitlistDate } from "@/lib/format-date";
 import * as api from "@/lib/api";
 import { posthog } from "@/lib/posthog";
+import type { Waitlist } from "@/lib/types";
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -39,9 +40,7 @@ export default function SettingsScreen() {
   const [error, setError] = useState("");
 
   // Admin: waitlists
-  const [waitlists, setWaitlists] = useState<
-    Array<{ id: string; passcode: string; created_at: string }>
-  >([]);
+  const [waitlists, setWaitlists] = useState<Waitlist[]>([]);
 
   // Admin: current admins list
   const [admins, setAdmins] = useState<
