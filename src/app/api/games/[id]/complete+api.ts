@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
+import { posthogServer } from "@/lib/posthog-server";
 import { declareWinnerAndAdvance } from "@/lib/services/orchestrator";
 import { ServiceError } from "@/lib/services/service-error";
-import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const admin = await requireAdmin(request);
@@ -14,15 +14,20 @@ export async function POST(request: Request, { id }: { id: string }) {
 
   try {
     const result = await declareWinnerAndAdvance(id, winner_id);
+
     posthogServer?.capture({
       distinctId: admin.id,
       event: "game_completed",
       properties: {
         game_id: id,
+        waitlist_id: result.waitlistId,
         winner_team_id: result.winnerId,
+        loser_team_id: result.loserId,
         streak: result.streak,
+        streak_maxed: result.streakMaxed,
       },
     });
+
     return Response.json({
       game_id: result.gameId,
       winner_id: result.winnerId,

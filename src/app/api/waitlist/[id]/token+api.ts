@@ -1,11 +1,12 @@
 import { requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
+import { posthogServer } from "@/lib/posthog-server";
 
 const TOKEN_TTL_SECONDS = 60;
 
 export async function POST(request: Request, { id }: { id: string }) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   // Get the waitlist passcode
   const { data: waitlist } = await supabase
@@ -37,6 +38,12 @@ export async function POST(request: Request, { id }: { id: string }) {
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
+
+  posthogServer?.capture({
+    distinctId: admin.id,
+    event: "join_token_generated",
+    properties: { waitlist_id: id },
+  });
 
   return Response.json({
     token: data.token,

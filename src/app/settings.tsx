@@ -86,7 +86,13 @@ export default function SettingsScreen() {
         email: email.trim() || undefined,
       });
       await login(updated);
-      posthog.capture("profile_updated");
+      posthog.capture("profile_updated", {
+        changed_fields: [
+          firstName.trim() !== user.first_name && "first_name",
+          lastName.trim() !== user.last_name && "last_name",
+          email.trim() !== (user.email ?? "") && "email",
+        ].filter(Boolean),
+      });
       setProfileSaved(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
@@ -159,8 +165,8 @@ export default function SettingsScreen() {
   async function handleCreateWaitlist() {
     setError("");
     try {
-      await api.createWaitlist();
-      posthog.capture("waitlist_created");
+      const wl = await api.createWaitlist();
+      posthog.capture("waitlist_created", { waitlist_id: wl.id });
       await fetchAdminData();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create waitlist");

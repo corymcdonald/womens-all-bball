@@ -3,9 +3,10 @@ import { joinAndAdvance } from "@/lib/services/orchestrator";
 import { ServiceError } from "@/lib/services/service-error";
 import { supabase } from "@/lib/supabase";
 import { hasActiveRow } from "@/lib/waitlist";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   const { user_id, first_name, last_name } = await request.json();
 
@@ -42,6 +43,15 @@ export async function POST(request: Request, { id }: { id: string }) {
 
   try {
     const player = await joinAndAdvance(id, targetUserId);
+    posthogServer?.capture({
+      distinctId: admin.id,
+      event: "player_added_by_admin",
+      properties: {
+        waitlist_id: id,
+        target_user_id: targetUserId,
+        created_new_user: !user_id,
+      },
+    });
     return Response.json(player, { status: 201 });
   } catch (e) {
     if (e instanceof ServiceError) {

@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
+import { posthogServer } from "@/lib/posthog-server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request, { id }: { id: string }) {
@@ -16,7 +17,7 @@ export async function GET(request: Request, { id }: { id: string }) {
 }
 
 export async function PATCH(request: Request, { id }: { id: string }) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   const body = await request.json();
   const updates: Record<string, unknown> = {};
@@ -37,6 +38,12 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   if (error || !data) {
     return Response.json({ error: "Team not found" }, { status: 404 });
   }
+
+  posthogServer?.capture({
+    distinctId: admin.id,
+    event: "team_color_updated",
+    properties: { team_id: id, color: body.color },
+  });
 
   return Response.json(data);
 }

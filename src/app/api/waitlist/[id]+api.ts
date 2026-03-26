@@ -1,8 +1,9 @@
 import { publishEvent } from "@/lib/ably";
 import { requireAdmin } from "@/lib/auth";
+import { posthogServer } from "@/lib/posthog-server";
+import { getStreak } from "@/lib/services/streak";
 import { supabase } from "@/lib/supabase";
 import { getWaitingQueue } from "@/lib/waitlist";
-import { getStreak } from "@/lib/services/streak";
 
 export async function GET(request: Request, { id }: { id: string }) {
   const { data: waitlist, error: waitlistError } = await supabase
@@ -96,7 +97,7 @@ export async function GET(request: Request, { id }: { id: string }) {
 
 // PATCH /api/waitlist/:id — update waitlist settings (admin only)
 export async function PATCH(request: Request, { id }: { id: string }) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   const body = await request.json();
   const updates: Record<string, number> = {};
@@ -142,6 +143,12 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   await publishEvent(`waitlist:${id}`, "settings:updated", {
     max_wins: data.max_wins,
     game_duration_minutes: data.game_duration_minutes,
+  });
+
+  posthogServer?.capture({
+    distinctId: admin.id,
+    event: "waitlist_settings_updated",
+    properties: { waitlist_id: id, ...updates },
   });
 
   return Response.json(data);

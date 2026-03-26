@@ -1,6 +1,7 @@
-import { createClerkClient } from "@clerk/backend";
+import { createClerkClient, verifyToken } from "@clerk/backend";
 import { getUserId, requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { posthogServer } from "@/lib/posthog-server";
 
 const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,
@@ -48,11 +49,32 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     if (body.email !== undefined) updates.email = body.email || null;
   }
 
-  // Link Clerk account — only the user themselves, and only if not already linked
+  // Link Clerk account — verify JWT proves ownership of the clerk_id
   if (body.clerk_id !== undefined) {
-    if (requesterId !== id) {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return Response.json(
-        { error: "Can only link your own account" },
+        { error: "Authentication required to link account" },
+        { status: 401 },
+      );
+    }
+
+    let verifiedClerkId: string;
+    try {
+      const payload = await verifyToken(authHeader.slice(7), {
+        secretKey: process.env.CLERK_SECRET_KEY!,
+      });
+      verifiedClerkId = payload.sub;
+    } catch {
+      return Response.json(
+        { error: "Invalid or expired token" },
+        { status: 401 },
+      );
+    }
+
+    if (verifiedClerkId !== body.clerk_id) {
+      return Response.json(
+        { error: "Token does not match clerk_id" },
         { status: 403 },
       );
     }
@@ -60,7 +82,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     // Check if already linked
     const { data: existing } = await supabase
       .from("users")
-      .select("clerk_id")
+      .select("clerk_id, email")
       .eq("id", id)
       .single();
 
@@ -71,12 +93,29 @@ export async function PATCH(request: Request, { id }: { id: string }) {
       );
     }
 
-    updates.clerk_id = body.clerk_id;
+    updates.clerk_id = verifiedClerkId;
+
+    // Sync email from Clerk if local email is missing
+    if (!existing?.email) {
+      try {
+        const clerkUser = await clerk.users.getUser(verifiedClerkId);
+        const clerkEmail =
+          clerkUser.emailAddresses.find(
+            (e) => e.id === clerkUser.primaryEmailAddressId,
+          )?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
+        if (clerkEmail) {
+          updates.email = clerkEmail;
+        }
+      } catch {
+        // Non-critical — email can be added later in Settings
+      }
+    }
   }
 
   // Role — only admins can change
+  let admin: { id: string; role: string } | null = null;
   if (body.role !== undefined) {
-    await requireAdmin(request);
+    admin = await requireAdmin(request);
     updates.role = body.role;
   }
 
@@ -95,14 +134,58 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
+  if (admin && body.role !== undefined) {
+    posthogServer?.capture({
+      distinctId: admin.id,
+      event: "user_role_changed",
+      properties: { target_user_id: id, new_role: body.role },
+    });
+  }
+
   return Response.json(data);
 }
 
 // DELETE /api/users/:id — anonymize account
 export async function DELETE(request: Request, { id }: { id: string }) {
-  const requesterId = getUserId(request);
-  if (!requesterId || requesterId !== id) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  // Look up the user to determine auth method
+  const { data: user } = await supabase
+    .from("users")
+    .select("clerk_id")
+    .eq("id", id)
+    .single();
+
+  if (!user) {
+    return Response.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (user.clerk_id) {
+    // Linked account: require verified Clerk JWT
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return Response.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+    try {
+      const payload = await verifyToken(authHeader.slice(7), {
+        secretKey: process.env.CLERK_SECRET_KEY!,
+      });
+      if (payload.sub !== user.clerk_id) {
+        return Response.json({ error: "Unauthorized" }, { status: 403 });
+      }
+    } catch {
+      return Response.json(
+        { error: "Invalid or expired token" },
+        { status: 401 },
+      );
+    }
+  } else {
+    // Guest account: x-user-id is the only option
+    const requesterId = getUserId(request);
+    if (!requesterId || requesterId !== id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   // Mark all active waitlist entries as left
@@ -111,13 +194,6 @@ export async function DELETE(request: Request, { id }: { id: string }) {
     .update({ status: "left" })
     .eq("user_id", id)
     .in("status", ["waiting", "playing", "absent"]);
-
-  // Look up the clerk_id before anonymizing
-  const { data: user } = await supabase
-    .from("users")
-    .select("clerk_id")
-    .eq("id", id)
-    .single();
 
   // Anonymize the user to preserve game history
   const { error } = await supabase
@@ -144,6 +220,12 @@ export async function DELETE(request: Request, { id }: { id: string }) {
       // Clerk user may already be deleted — don't block the response
     }
   }
+
+  posthogServer?.capture({
+    distinctId: id,
+    event: "account_deleted",
+    properties: { had_clerk_account: !!user?.clerk_id },
+  });
 
   return Response.json({ success: true });
 }

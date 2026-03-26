@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     posthogServer?.capture({
       distinctId: admin.id,
       event: "game_started",
-      properties: { waitlist_id, game_id: game.id },
+      properties: { waitlist_id, game_id: game.id, team1_id, team2_id },
     });
     await publishEvent(`waitlist:${waitlist_id}`, "game:started", {
       game_id: game.id,

@@ -27,7 +27,12 @@ export async function POST(request: Request, { id }: { id: string }) {
     posthogServer?.capture({
       distinctId: admin.id,
       event: "player_marked_absent",
-      properties: { waitlist_id: id, waitlist_player_id },
+      properties: {
+        waitlist_id: id,
+        waitlist_player_id,
+        team_id: team_id ?? null,
+        had_replacement: !!result.replacement,
+      },
     });
     await publishEvent(`waitlist:${id}`, "updated");
     await checkAndAdvance(id);

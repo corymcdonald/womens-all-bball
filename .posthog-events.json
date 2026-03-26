@@ -2,7 +2,7 @@
   {
     "event": "player_registered",
     "description": "A new player successfully registers an account (first-time sign up)",
-    "file": "src/components/screens/register.tsx"
+    "file": "src/components/screens/auth.tsx"
   },
   {
     "event": "queue_joined",
@@ -16,8 +16,8 @@
   },
   {
     "event": "queue_rejoined",
-    "description": "Authorized player rejoins the waitlist queue after previously leaving (server-side)",
-    "file": "src/app/api/waitlist/[id]/rejoin+api.ts"
+    "description": "Returning player rejoins the waitlist queue without passcode (server-side)",
+    "file": "src/app/api/waitlist/[id]/join+api.ts"
   },
   {
     "event": "queue_left",
@@ -45,18 +45,93 @@
     "file": "src/app/api/waitlist/[id]/mark-absent+api.ts"
   },
   {
+    "event": "player_marked_left",
+    "description": "Admin marks a player as left mid-session (server-side)",
+    "file": "src/app/api/waitlist/[id]/mark-left+api.ts"
+  },
+  {
+    "event": "player_marked_present",
+    "description": "Player or admin marks an absent player as present (server-side)",
+    "file": "src/app/api/waitlist/[id]/mark-present+api.ts"
+  },
+  {
+    "event": "player_added_by_admin",
+    "description": "Admin manually adds a player to the waitlist queue (server-side)",
+    "file": "src/app/api/waitlist/[id]/add-player+api.ts"
+  },
+  {
+    "event": "queue_reordered",
+    "description": "Admin reorders the waitlist queue priorities (server-side)",
+    "file": "src/app/api/waitlist/[id]/reorder+api.ts"
+  },
+  {
+    "event": "team_kept",
+    "description": "Admin keeps the winning team with optional player substitutions (server-side)",
+    "file": "src/app/api/games/[id]/keep-team+api.ts"
+  },
+  {
+    "event": "next_game_triggered",
+    "description": "Admin manually triggers the next game via the orchestrator (server-side)",
+    "file": "src/app/api/games/[id]/next-game+api.ts"
+  },
+  {
+    "event": "join_token_generated",
+    "description": "Admin generates a QR join token for the waitlist (server-side)",
+    "file": "src/app/api/waitlist/[id]/token+api.ts"
+  },
+  {
+    "event": "waitlist_settings_updated",
+    "description": "Admin updates waitlist settings like max_wins or game_duration (server-side)",
+    "file": "src/app/api/waitlist/[id]+api.ts"
+  },
+  {
+    "event": "team_color_updated",
+    "description": "Admin changes a team's color (server-side)",
+    "file": "src/app/api/teams/[id]+api.ts"
+  },
+  {
+    "event": "user_role_changed",
+    "description": "Admin promotes or demotes a user's role (server-side)",
+    "file": "src/app/api/users/[id]+api.ts"
+  },
+  {
+    "event": "account_deleted",
+    "description": "User anonymizes their account and deletes Clerk identity (server-side)",
+    "file": "src/app/api/users/[id]+api.ts"
+  },
+  {
     "event": "waitlist_created",
-    "description": "Admin creates a new game session waitlist",
+    "description": "Admin creates a new game session waitlist (client-side)",
     "file": "src/app/settings.tsx"
   },
   {
     "event": "profile_updated",
-    "description": "Player updates their profile information (name or phone)",
+    "description": "Player updates their profile information (client-side)",
     "file": "src/app/settings.tsx"
   },
   {
     "event": "user_logged_out",
-    "description": "Player logs out of the app",
+    "description": "Player logs out of the app (client-side)",
+    "file": "src/app/settings.tsx"
+  },
+  {
+    "event": "user_signed_in",
+    "description": "User signs in via Clerk (client-side)",
+    "file": "src/components/screens/auth.tsx"
+  },
+  {
+    "event": "password_reset",
+    "description": "User resets their password via Clerk (client-side)",
+    "file": "src/components/screens/auth.tsx"
+  },
+  {
+    "event": "clerk_signup_for_link",
+    "description": "User creates a Clerk account to link to existing guest profile (client-side)",
+    "file": "src/components/screens/auth.tsx"
+  },
+  {
+    "event": "account_linked",
+    "description": "Guest user links their profile to a Clerk account (client-side)",
     "file": "src/app/settings.tsx"
   }
 ]

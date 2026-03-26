@@ -1,8 +1,9 @@
 import { publishEvent } from "@/lib/ably";
-import { getUserId } from "@/lib/auth";
+import { getUserId, isAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { markPresent } from "@/lib/services/queue-service";
 import { ServiceError } from "@/lib/services/service-error";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
   const requesterId = getUserId(request);
@@ -31,19 +32,24 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Player not found" }, { status: 404 });
   }
 
-  const { data: requester } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", requesterId)
-    .single();
-
-  if (player.user_id !== requesterId && requester?.role !== "admin") {
+  // Self-service: player can mark themselves present. Admin check uses JWT.
+  const admin = await isAdmin(request);
+  if (player.user_id !== requesterId && !admin) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   try {
     const updated = await markPresent(id, waitlist_player_id);
     await publishEvent(`waitlist:${id}`, "updated");
+    posthogServer?.capture({
+      distinctId: requesterId,
+      event: "player_marked_present",
+      properties: {
+        waitlist_id: id,
+        waitlist_player_id,
+        is_self: requesterId === player.user_id,
+      },
+    });
     return Response.json(updated);
   } catch (e) {
     if (e instanceof ServiceError) {

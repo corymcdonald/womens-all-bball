@@ -120,23 +120,37 @@ export async function joinAndAdvance(waitlistId: string, userId: string) {
 
 /**
  * Declare a winner, publish events, then auto-form next game.
+ * Runs entirely inside the waitlist lock to prevent race conditions.
  */
 export async function declareWinnerAndAdvance(
   gameId: string,
   winnerTeamId: string,
 ): Promise<DeclareWinnerResult> {
-  const result = await declareWinner(gameId, winnerTeamId);
+  // Look up the waitlist before locking so we know which lock to acquire
+  const { data: game } = await supabase
+    .from("games")
+    .select("waitlist_id")
+    .eq("id", gameId)
+    .single();
 
-  await publishEvent(`waitlist:${result.waitlistId}`, "game:completed", {
-    game_id: gameId,
-    winner_id: winnerTeamId,
-    streak: result.streak,
-    streak_maxed: result.streakMaxed,
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  return withLock(`waitlist:${game.waitlist_id}`, async () => {
+    const result = await declareWinner(gameId, winnerTeamId);
+
+    await publishEvent(`waitlist:${result.waitlistId}`, "game:completed", {
+      game_id: gameId,
+      winner_id: winnerTeamId,
+      streak: result.streak,
+      streak_maxed: result.streakMaxed,
+    });
+
+    await advance(result.waitlistId);
+
+    await publishEvent(`waitlist:${result.waitlistId}`, "updated");
+
+    return result;
   });
-
-  await checkAndAdvance(result.waitlistId);
-
-  await publishEvent(`waitlist:${result.waitlistId}`, "updated");
-
-  return result;
 }

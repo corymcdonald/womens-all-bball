@@ -1,9 +1,10 @@
 import { supabase } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/auth";
 import { publishEvent } from "@/lib/ably";
+import { posthogServer } from "@/lib/posthog-server";
 
 export async function POST(request: Request, { id }: { id: string }) {
-  await requireAdmin(request);
+  const admin = await requireAdmin(request);
 
   const { player_ids } = await request.json();
 
@@ -35,6 +36,12 @@ export async function POST(request: Request, { id }: { id: string }) {
   }
 
   await publishEvent(`waitlist:${id}`, "updated");
+
+  posthogServer?.capture({
+    distinctId: admin.id,
+    event: "queue_reordered",
+    properties: { waitlist_id: id, players_count: player_ids.length },
+  });
 
   return Response.json({ success: true, reordered: player_ids.length });
 }

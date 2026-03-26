@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { verifyToken } from "@clerk/backend";
 
 // GET /api/users?q=search&role=admin&clerk_id=xxx
 export async function GET(request: Request) {
@@ -8,8 +9,30 @@ export async function GET(request: Request) {
   const role = url.searchParams.get("role");
   const clerkId = url.searchParams.get("clerk_id");
 
-  // Look up by Clerk ID (used after sign-in to find linked Supabase user)
+  // Look up by Clerk ID — caller must prove they own this clerk_id via JWT
   if (clerkId) {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return Response.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
+    try {
+      const payload = await verifyToken(authHeader.slice(7), {
+        secretKey: process.env.CLERK_SECRET_KEY!,
+      });
+      if (payload.sub !== clerkId) {
+        return Response.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } catch {
+      return Response.json(
+        { error: "Invalid or expired token" },
+        { status: 401 },
+      );
+    }
+
     const { data, error } = await supabase
       .from("users")
       .select("id, first_name, last_name, email, clerk_id, role")
@@ -76,19 +99,45 @@ export async function POST(request: Request) {
     );
   }
 
-  // If clerk_id provided, upsert by it (for admin linking)
-  // If email provided, upsert by email (for guest re-registration)
-  // Otherwise insert a new row
+  // Verify JWT when clerk_id is provided
+  let verifiedClerkId: string | undefined;
+  if (clerk_id) {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return Response.json(
+        { error: "Authentication required for clerk_id" },
+        { status: 401 },
+      );
+    }
+    try {
+      const payload = await verifyToken(authHeader.slice(7), {
+        secretKey: process.env.CLERK_SECRET_KEY!,
+      });
+      if (payload.sub !== clerk_id) {
+        return Response.json(
+          { error: "Token does not match clerk_id" },
+          { status: 403 },
+        );
+      }
+      verifiedClerkId = payload.sub;
+    } catch {
+      return Response.json(
+        { error: "Invalid or expired token" },
+        { status: 401 },
+      );
+    }
+  }
+
   const upsertFields: Record<string, unknown> = {
     first_name,
     last_name,
     ...(email ? { email } : {}),
-    ...(clerk_id ? { clerk_id } : {}),
+    ...(verifiedClerkId ? { clerk_id: verifiedClerkId } : {}),
     ...(push_token ? { push_token } : {}),
   };
 
   let query;
-  if (clerk_id) {
+  if (verifiedClerkId) {
     query = supabase
       .from("users")
       .upsert(upsertFields, { onConflict: "clerk_id" })

@@ -20,7 +20,12 @@ export async function POST(request: Request, { id }: { id: string }) {
     posthogServer?.capture({
       distinctId: admin.id,
       event: "team_formed",
-      properties: { waitlist_id: id },
+      properties: {
+        waitlist_id: id,
+        team_id: result.team.id,
+        color: result.team.color,
+        player_count: result.players.length,
+      },
     });
     await publishEvent(`waitlist:${id}`, "updated");
     return Response.json(result);
