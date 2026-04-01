@@ -59,6 +59,10 @@ async function determineTeamPositions(
  * Internal implementation — runs inside the lock.
  * Evaluates state and takes the single appropriate next action,
  * then recurses once if a team was formed (to check if we can now start a game).
+ *
+ * No Ably events are published here — the caller publishes a single "updated"
+ * event after all state transitions are complete, so the client never sees
+ * intermediate states (e.g. teams transitioned to "playing" before the game row exists).
  */
 async function advance(waitlistId: string): Promise<void> {
   // If a game is in progress, nothing to do
@@ -84,10 +88,7 @@ async function advance(waitlistId: string): Promise<void> {
       stagedTeams,
     );
 
-    const game = await createGame(waitlistId, team1Id, team2Id);
-    await publishEvent(`waitlist:${waitlistId}`, "game:started", {
-      game_id: game.id,
-    });
+    await createGame(waitlistId, team1Id, team2Id);
     return;
   }
 
@@ -100,10 +101,6 @@ async function advance(waitlistId: string): Promise<void> {
   const usedColors = await getUsedColors(waitlistId);
   const result = await formTeamFromQueue(waitlistId, [...usedColors]);
   if (!result) return;
-
-  await publishEvent(`waitlist:${waitlistId}`, "team:formed", {
-    team_id: result.team.id,
-  });
 
   // Re-evaluate: may now have 2 staged teams → start game
   await advance(waitlistId);
@@ -118,12 +115,15 @@ export async function checkAndAdvance(waitlistId: string): Promise<void> {
 }
 
 /**
- * Join a player to the queue, publish event, then check if auto-formation should happen.
+ * Join a player to the queue, then check if auto-formation should happen.
+ * The "updated" event is published AFTER advancement so the client only
+ * sees the final state, avoiding a flash where players briefly appear in
+ * the queue before being moved into a newly-formed team.
  */
 export async function joinAndAdvance(waitlistId: string, userId: string) {
   const player = await addToQueue(waitlistId, userId);
-  await publishEvent(`waitlist:${waitlistId}`, "updated");
   await checkAndAdvance(waitlistId);
+  await publishEvent(`waitlist:${waitlistId}`, "updated");
   return player;
 }
 

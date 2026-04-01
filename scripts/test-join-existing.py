@@ -3,12 +3,11 @@
 Join existing users to a waitlist via passcode — with parallel requests to test race conditions.
 
 Usage:
-    python scripts/test-join-existing.py [BASE_URL] [WAITLIST_ID] [NUM_PLAYERS] [--parallel]
+    python scripts/test-join-existing.py [BASE_URL] [NUM_PLAYERS] [--parallel]
 
-Finds non-admin users and joins them to the specified waitlist using the passcode.
+Finds the most recent waitlist from the API, then joins non-admin users to it.
 If NUM_PLAYERS is specified and more users are needed than exist, prompts to create
 guest users to fill the gap.
-If no waitlist ID is provided, uses the most recent one.
 
 --parallel  Join all users concurrently (tests advisory lock / race conditions)
 
@@ -29,8 +28,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Parse positional args (skip flags)
 positional = [a for a in sys.argv[1:] if not a.startswith("--")]
 BASE_URL = positional[0] if len(positional) > 0 else "http://localhost:8081"
-WAITLIST_ID = positional[1] if len(positional) > 1 else None
-NUM_PLAYERS = int(positional[2]) if len(positional) > 2 else None
+NUM_PLAYERS = int(positional[1]) if len(positional) > 1 else None
 PARALLEL = "--parallel" in sys.argv
 API = f"{BASE_URL}/api"
 
@@ -166,21 +164,14 @@ admin = admins[0]
 ADMIN_TOKEN = get_clerk_sign_in_token(admin["clerk_id"])
 print(f"  Admin: {admin['first_name']} {admin['last_name']}")
 
-# ─── Find or use waitlist ───
+# ─── Find latest waitlist ───
 
-if not WAITLIST_ID:
-    print("\n--- Finding most recent waitlist ---")
-    waitlists = get("/waitlist")
-    if not waitlists or not isinstance(waitlists, list) or len(waitlists) == 0:
-        print("  No waitlists found. Create one first.")
-        sys.exit(1)
-    WAITLIST_ID = waitlists[0]["id"]
-
-# Get passcode from Supabase directly (GET /waitlist strips it for non-admins)
-wl_rows = supabase_query("waitlists", f"id=eq.{WAITLIST_ID}")
+print("\n--- Finding most recent waitlist ---")
+wl_rows = supabase_query("waitlists", "order=created_at.desc&limit=1")
 if not wl_rows:
-    print(f"  Waitlist {WAITLIST_ID} not found")
+    print("  No waitlists found. Create one first.")
     sys.exit(1)
+WAITLIST_ID = wl_rows[0]["id"]
 PASSCODE = wl_rows[0]["passcode"]
 print(f"  Waitlist: {WAITLIST_ID}")
 print(f"  Passcode: {PASSCODE}")

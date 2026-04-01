@@ -1,9 +1,9 @@
+import { handleRouteError } from "@/lib/api-error";
 import { getUserId } from "@/lib/auth";
+import { posthogServer } from "@/lib/posthog-server";
+import { joinAndAdvance } from "@/lib/services/orchestrator";
 import { supabase } from "@/lib/supabase";
 import { hasActiveRow } from "@/lib/waitlist";
-import { joinAndAdvance } from "@/lib/services/orchestrator";
-import { handleRouteError } from "@/lib/api-error";
-import { posthogServer } from "@/lib/posthog-server";
 
 async function hasPreviousRow(
   waitlistId: string,

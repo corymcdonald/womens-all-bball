@@ -80,17 +80,13 @@ export default function HomeScreen() {
     await wl.declareWinner(gameId, winnerId);
   }
 
-  // Clear pendingWinner once real data arrives (active game or staged teams),
-  // preventing the flash to "Waiting for players" between states.
+  // Clear pendingWinner once the mutation completes and fresh data is loaded.
+  // The transition animation shows while mutating; after that, real data takes over.
   useEffect(() => {
-    if (
-      pendingWinner &&
-      !wl.mutating &&
-      (wl.data?.activeGame || (wl.data?.stagedTeams?.length ?? 0) > 0)
-    ) {
+    if (pendingWinner && !wl.mutating) {
       setPendingWinner(null);
     }
-  }, [pendingWinner, wl.mutating, wl.data?.activeGame, wl.data?.stagedTeams]);
+  }, [pendingWinner, wl.mutating]);
 
   async function handleScanJoin(waitlistId: string, token: string) {
     try {

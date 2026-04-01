@@ -78,7 +78,10 @@ export function JoinSection({
         onPress={() => requireAuth(handleOpenScanner)}
       />
 
-      <TouchableOpacity onPress={() => setShowManual(!showManual)}>
+      <TouchableOpacity
+        onPress={() => setShowManual(!showManual)}
+        style={styles.manualToggle}
+      >
         <ThemedText type="small" themeColor="textSecondary">
           {showManual ? "Hide token entry" : "Or enter token manually"}
         </ThemedText>
@@ -153,7 +156,9 @@ export function JoinSection({
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.two,
-    alignItems: "center",
+  },
+  manualToggle: {
+    alignSelf: "center",
   },
   manualSection: {
     gap: Spacing.two,
