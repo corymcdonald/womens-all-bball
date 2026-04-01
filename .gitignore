@@ -42,7 +42,7 @@ app-example
 /ios
 /android
 
-supabase/
+supabase/.temp
 memory/
 .env
 .claude/agentcheck/reports/
