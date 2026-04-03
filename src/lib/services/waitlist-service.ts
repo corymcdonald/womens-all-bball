@@ -37,13 +37,15 @@ function mapTeamPlayers(
   raw:
     | {
         user_id: string;
-        users: { id: string; first_name: string; last_name: string };
+        users:
+          | { id: string; first_name: string; last_name: string }
+          | { id: string; first_name: string; last_name: string }[];
       }[]
     | null,
 ): TeamPlayer[] {
   return (raw ?? []).map((tp) => ({
     user_id: tp.user_id,
-    users: tp.users,
+    users: Array.isArray(tp.users) ? tp.users[0] : tp.users,
   }));
 }
 
@@ -102,6 +104,12 @@ export async function getWaitlistDetail(
     players: mapTeamPlayers(t.team_players),
   }));
 
+  // Count unique players who have ever joined this waitlist
+  const { count: totalPlayers } = await supabase
+    .from("waitlist_players")
+    .select("*", { count: "exact", head: true })
+    .eq("waitlist_id", waitlistId);
+
   const { streak: rawStreak, teamId: rawStreakTeamId } =
     await getStreak(waitlistId);
 
@@ -122,5 +130,6 @@ export async function getWaitlistDetail(
     upNextCount,
     stagedTeams,
     streakTeamId,
+    totalPlayers: totalPlayers ?? 0,
   };
 }

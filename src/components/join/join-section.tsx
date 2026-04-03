@@ -7,18 +7,24 @@ import { ThemedText } from "@/components/themed-text";
 import { Button } from "@/components/ui/button";
 import { StyledTextInput } from "@/components/ui/text-input";
 import { BorderRadius, Spacing } from "@/constants/theme";
+import { posthog } from "@/lib/posthog";
 
 type Props = {
   isAuthorized: boolean;
+  waitlistId: string | null;
   onQuickJoin: () => void;
   onTokenJoin: (token: string) => void;
   onScanJoin: (waitlistId: string, token: string) => void;
   setError: (msg: string) => void;
-  requireAuth: (cb: () => void) => void;
+  requireAuth: (
+    cb: () => void,
+    join?: { waitlistId: string; token: string },
+  ) => void;
 };
 
 export function JoinSection({
   isAuthorized,
+  waitlistId,
   onQuickJoin,
   onTokenJoin,
   onScanJoin,
@@ -67,7 +73,13 @@ export function JoinSection({
 
   if (isAuthorized) {
     return (
-      <Button label="Join Waitlist" onPress={() => requireAuth(onQuickJoin)} />
+      <Button
+        label="Join Waitlist"
+        onPress={() => {
+          posthog.capture("join_tapped", { method: "quick" });
+          requireAuth(onQuickJoin);
+        }}
+      />
     );
   }
 
@@ -75,11 +87,19 @@ export function JoinSection({
     <View style={styles.container}>
       <Button
         label="Scan QR Code to Join"
-        onPress={() => requireAuth(handleOpenScanner)}
+        onPress={() => {
+          posthog.capture("join_tapped", { method: "qr_scan" });
+          requireAuth(handleOpenScanner);
+        }}
       />
 
       <TouchableOpacity
-        onPress={() => setShowManual(!showManual)}
+        onPress={() => {
+          if (!showManual) {
+            posthog.capture("join_tapped", { method: "manual_token_expand" });
+          }
+          setShowManual(!showManual);
+        }}
         style={styles.manualToggle}
       >
         <ThemedText type="small" themeColor="textSecondary">
@@ -100,10 +120,17 @@ export function JoinSection({
           <Button
             label="Join"
             onPress={() => {
-              requireAuth(() => {
-                onTokenJoin(manualToken.trim().toUpperCase());
-                setManualToken("");
-              });
+              const token = manualToken.trim().toUpperCase();
+              posthog.capture("join_tapped", { method: "manual_token" });
+              requireAuth(
+                () => {
+                  // Already authenticated — join via client API
+                  onTokenJoin(token);
+                  setManualToken("");
+                },
+                // Not authenticated — backend will join during registration
+                waitlistId ? { waitlistId, token } : undefined,
+              );
             }}
             disabled={!manualToken.trim()}
           />

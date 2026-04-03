@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GameCard } from "@/components/game/game-card";
 import { JoinSection } from "@/components/join/join-section";
+import { GameSettings } from "@/components/queue/game-settings";
 import { QueueItem, type QueuePlayer } from "@/components/queue/queue-item";
 import { StatsBar } from "@/components/queue/stats-bar";
 import {
@@ -36,6 +37,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useWaitlist } from "@/hooks/use-waitlist";
 import * as api from "@/lib/api";
 import { useAuthGate } from "@/lib/auth-gate-context";
+import type { TeamPlayer } from "@/lib/types";
 import { formatWaitlistDate } from "@/lib/format-date";
 import { useUser } from "@/lib/user-context";
 import { addAuthorizedWaitlist } from "@/lib/user-store";
@@ -48,10 +50,7 @@ export default function HomeScreen() {
   const [editMode, setEditMode] = useState(false);
   const [pendingWinner, setPendingWinner] = useState<{
     winnerColor: string;
-    winnerPlayers: {
-      user_id: string;
-      users: { first_name: string; last_name: string };
-    }[];
+    winnerPlayers: TeamPlayer[];
     winnerSide: "left" | "right";
   } | null>(null);
 
@@ -192,6 +191,15 @@ export default function HomeScreen() {
         </ThemedText>
       )}
 
+      {/* Admin: game settings toggles */}
+      {isAdmin && wl.data && (
+        <GameSettings
+          maxWins={wl.data.waitlist.max_wins}
+          gameDuration={wl.data.waitlist.game_duration_minutes}
+          onUpdateSettings={wl.updateSettings}
+        />
+      )}
+
       {/* Stats */}
       {wl.loading ? (
         <View style={styles.skeletonStats}>
@@ -202,9 +210,9 @@ export default function HomeScreen() {
         </View>
       ) : wl.data ? (
         <StatsBar
-          waitlist={wl.data.waitlist}
           queueCount={wl.data.queue.length}
           playingCount={wl.data.playing.length}
+          totalPlayers={wl.data.totalPlayers}
         />
       ) : null}
 
@@ -221,8 +229,13 @@ export default function HomeScreen() {
           stagedTeams={wl.data?.stagedTeams}
           pendingWinner={pendingWinner}
           isAdmin={!!isAdmin}
+          queue={wl.data?.queue}
           onDeclareWinner={handleDeclareWinner}
           onUpdateColor={wl.updateTeamColor}
+          onSwapPlayer={wl.swapPlayer}
+          mutating={wl.mutating}
+          maxWins={wl.data?.waitlist.max_wins}
+          gameDuration={wl.data?.waitlist.game_duration_minutes}
         />
       ) : wl.data ? (
         <View
@@ -277,6 +290,7 @@ export default function HomeScreen() {
       {!wl.isInQueue && !wl.isPlaying && (
         <JoinSection
           isAuthorized={wl.isAuthorized}
+          waitlistId={wl.waitlistId}
           onQuickJoin={wl.quickJoin}
           onTokenJoin={wl.joinWithToken}
           onScanJoin={handleScanJoin}

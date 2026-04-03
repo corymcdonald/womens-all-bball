@@ -59,6 +59,13 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
+  // Also update the active game so changes take effect immediately
+  await supabase
+    .from("games")
+    .update(updates)
+    .eq("waitlist_id", id)
+    .eq("status", "in_progress");
+
   await publishEvent(`waitlist:${id}`, "settings:updated", {
     max_wins: data.max_wins,
     game_duration_minutes: data.game_duration_minutes,

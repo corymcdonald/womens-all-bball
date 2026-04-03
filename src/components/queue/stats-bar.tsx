@@ -2,18 +2,17 @@ import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { Spacing } from "@/constants/theme";
-import type { WaitlistData } from "@/hooks/use-waitlist";
 
 type Props = {
-  waitlist: WaitlistData["waitlist"];
   queueCount: number;
   playingCount: number;
+  totalPlayers: number;
 };
 
-export function StatsBar({ waitlist, queueCount, playingCount }: Props) {
+export function StatsBar({ queueCount, playingCount, totalPlayers }: Props) {
   return (
     <View style={styles.row}>
-      <Stat value={`${waitlist.game_duration_minutes}m`} label="Game" />
+      <Stat value={`${totalPlayers}`} label="Joined" />
       <Stat value={`${queueCount}`} label="In Queue" />
       <Stat value={`${playingCount}`} label="Playing" />
     </View>

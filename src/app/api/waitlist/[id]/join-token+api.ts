@@ -28,8 +28,30 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Invalid token" }, { status: 403 });
   }
 
-  const GRACE_PERIOD_MS = 30 * 1000;
-  if (new Date(tokenRow.expires_at).getTime() + GRACE_PERIOD_MS < Date.now()) {
+  const { data: waitlist } = await supabase
+    .from("waitlists")
+    .select("token_grace_period_minutes")
+    .eq("id", id)
+    .single();
+
+  const gracePeriodMinutes = waitlist?.token_grace_period_minutes ?? 5;
+  const graceMs = gracePeriodMinutes * 60 * 1000;
+  const tokenExpiredAt = new Date(tokenRow.expires_at).getTime();
+  if (tokenExpiredAt + graceMs < Date.now()) {
+    const minutesPastExpiry = Math.round(
+      (Date.now() - tokenExpiredAt) / 60_000,
+    );
+    posthogServer?.capture({
+      distinctId: userId,
+      event: "token_expired_attempt",
+      properties: {
+        waitlist_id: id,
+        token,
+        minutes_past_expiry: minutesPastExpiry,
+        grace_period_minutes: gracePeriodMinutes,
+        token_expired_at: tokenRow.expires_at,
+      },
+    });
     return Response.json({ error: "Token expired" }, { status: 403 });
   }
 

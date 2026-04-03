@@ -25,11 +25,17 @@ import AuthScreen from "@/components/screens/auth";
 import { SemanticColors, Spacing } from "@/constants/theme";
 import { useUser } from "@/lib/user-context";
 import { registerUser, getUserByClerkId } from "@/lib/api";
+import { addAuthorizedWaitlist } from "@/lib/user-store";
 import { posthog } from "@/lib/posthog";
 import type { User } from "@/lib/types";
 
+export type JoinContext = {
+  waitlistId: string;
+  token: string;
+};
+
 type AuthGateContextType = {
-  requireAuth: (onAuthenticated: () => void) => void;
+  requireAuth: (onAuthenticated: () => void, join?: JoinContext) => void;
 };
 
 const AuthGateContext = createContext<AuthGateContextType>({
@@ -43,13 +49,15 @@ export function AuthGateProvider({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
   const [mode, setMode] = useState<AuthMode>("guest");
   const pendingRef = useRef<(() => void) | null>(null);
+  const joinContextRef = useRef<JoinContext | null>(null);
 
   const requireAuth = useCallback(
-    (onAuthenticated: () => void) => {
+    (onAuthenticated: () => void, join?: JoinContext) => {
       if (user) {
         onAuthenticated();
       } else {
         pendingRef.current = onAuthenticated;
+        joinContextRef.current = join ?? null;
         setMode("guest");
         setVisible(true);
       }
@@ -71,6 +79,7 @@ export function AuthGateProvider({ children }: { children: React.ReactNode }) {
     setVisible(false);
     setMode("guest");
     pendingRef.current = null;
+    joinContextRef.current = null;
   }
 
   // Handle Clerk sign-in completion: look up Supabase user by clerk_id
@@ -90,8 +99,17 @@ export function AuthGateProvider({ children }: { children: React.ReactNode }) {
         {mode === "guest" ? (
           <RegisterForm
             onDismiss={dismiss}
-            onRegister={login}
+            onRegister={async (registeredUser, joined) => {
+              if (joined && joinContextRef.current) {
+                await addAuthorizedWaitlist(joinContextRef.current.waitlistId);
+                // Clear pending action — the backend already joined them
+                pendingRef.current = null;
+                joinContextRef.current = null;
+              }
+              await login(registeredUser);
+            }}
             onSwitchToSignIn={() => setMode("sign-in")}
+            joinContext={joinContextRef.current}
           />
         ) : (
           <ClerkSignInWrapper
@@ -112,10 +130,12 @@ function RegisterForm({
   onDismiss,
   onRegister,
   onSwitchToSignIn,
+  joinContext,
 }: {
   onDismiss: () => void;
   onSwitchToSignIn: () => void;
-  onRegister: (user: User) => Promise<void>;
+  onRegister: (user: User, joined: boolean) => Promise<void>;
+  joinContext: JoinContext | null;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -131,13 +151,27 @@ function RegisterForm({
     setSubmitting(true);
 
     try {
-      const user = await registerUser({
+      const result = await registerUser({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         ...(email.trim() ? { email: email.trim() } : {}),
+        ...(joinContext
+          ? {
+              waitlist_id: joinContext.waitlistId,
+              token: joinContext.token,
+            }
+          : {}),
       });
-      posthog.capture("player_registered", { user_id: user.id });
-      await onRegister(user);
+      // Identify before capturing so the event is linked with person properties
+      posthog.identify(result.id, {
+        name: `${result.first_name} ${result.last_name}`,
+        first_name: result.first_name,
+        last_name: result.last_name,
+        role: result.role,
+        email: result.email,
+      });
+      posthog.capture("player_registered");
+      await onRegister(result, !!result.joined);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Registration failed");
     } finally {

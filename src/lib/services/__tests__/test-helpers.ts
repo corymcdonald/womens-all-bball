@@ -3,7 +3,10 @@
  * Mimics the data model with teams.status for direct state tracking.
  */
 
-type Row = Record<string, unknown>;
+type Row = {
+  id: string;
+  [key: string]: unknown;
+};
 
 export class MockDB {
   tables: Record<string, Row[]> = {
@@ -131,12 +134,13 @@ export class MockDB {
       .filter((t) => t.waitlist_id === waitlistId && t.status === "staged")
       .sort(
         (a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+          new Date(a.created_at as string).getTime() -
+          new Date(b.created_at as string).getTime(),
       );
   }
 
   getStagedColors(waitlistId: string): string[] {
-    return this.getStagedTeams(waitlistId).map((t) => t.color);
+    return this.getStagedTeams(waitlistId).map((t) => t.color as string);
   }
 
   getUsedColors(waitlistId: string): Set<string> {
@@ -147,7 +151,7 @@ export class MockDB {
             t.waitlist_id === waitlistId &&
             (t.status === "staged" || t.status === "playing"),
         )
-        .map((t) => t.color),
+        .map((t) => t.color as string),
     );
   }
 
@@ -162,14 +166,15 @@ export class MockDB {
       .filter((g) => g.waitlist_id === waitlistId && g.status === "completed")
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          new Date(b.created_at as string).getTime() -
+          new Date(a.created_at as string).getTime(),
       );
   }
 
   getTeamPlayerIds(teamId: string): string[] {
     return this.tables.team_players
       .filter((tp) => tp.team_id === teamId)
-      .map((tp) => tp.user_id);
+      .map((tp) => tp.user_id as string);
   }
 }
 
@@ -208,7 +213,8 @@ export function formTeam(
     .filter((wp) => wp.waitlist_id === waitlistId && wp.status === "waiting")
     .sort(
       (a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        new Date(a.created_at as string).getTime() -
+        new Date(b.created_at as string).getTime(),
     );
 
   if (waiting.length < 5) return null;
@@ -216,7 +222,7 @@ export function formTeam(
   const team = db.createTeam(waitlistId, color, "staged");
 
   for (const wp of waiting.slice(0, 5)) {
-    db.addPlayerToTeam(team.id, wp.user_id);
+    db.addPlayerToTeam(team.id, wp.user_id as string);
     wp.status = "playing";
   }
 
@@ -252,4 +258,102 @@ export function markTeamCompleted(
 export function markTeamStaged(db: MockDB, teamId: string) {
   const team = db.tables.teams.find((t) => t.id === teamId);
   if (team) team.status = "staged";
+}
+
+/**
+ * Get the next waiting player from the queue (oldest first, excluding absent).
+ */
+export function getNextWaiting(db: MockDB, waitlistId: string): Row | null {
+  const waiting = db.tables.waitlist_players
+    .filter((wp) => wp.waitlist_id === waitlistId && wp.status === "waiting")
+    .sort(
+      (a, b) =>
+        new Date(a.created_at as string).getTime() -
+        new Date(b.created_at as string).getTime(),
+    );
+  return waiting[0] ?? null;
+}
+
+/**
+ * Swap a player off a team. Finds replacement BEFORE transitioning the
+ * removed player to "waiting" to prevent the auto-draft bug where the
+ * removed player is selected as their own replacement.
+ */
+export function swapPlayerOffTeam(
+  db: MockDB,
+  waitlistId: string,
+  teamId: string,
+  userId: string,
+  replacementUserId?: string,
+): { removedUserId: string; replacementUserId: string | null } {
+  // Find replacement BEFORE removing (the fix for the auto-draft bug)
+  const replacement = replacementUserId
+    ? db.tables.waitlist_players.find(
+        (wp) =>
+          wp.waitlist_id === waitlistId &&
+          wp.user_id === replacementUserId &&
+          wp.status === "waiting",
+      )
+    : getNextWaiting(db, waitlistId);
+
+  // Remove from team
+  const tpIndex = db.tables.team_players.findIndex(
+    (tp) => tp.team_id === teamId && tp.user_id === userId,
+  );
+  if (tpIndex !== -1) db.tables.team_players.splice(tpIndex, 1);
+
+  // Transition removed player: playing → waiting
+  const wp = db.tables.waitlist_players.find(
+    (w) =>
+      w.waitlist_id === waitlistId &&
+      w.user_id === userId &&
+      w.status === "playing",
+  );
+  if (wp) wp.status = "waiting";
+
+  // Add replacement to team
+  if (replacement) {
+    replacement.status = "playing";
+    db.addPlayerToTeam(teamId, replacement.user_id as string);
+    return { removedUserId: userId, replacementUserId: replacement.user_id as string };
+  }
+
+  return { removedUserId: userId, replacementUserId: null };
+}
+
+/**
+ * Buggy version of swap: finds replacement AFTER transitioning, which
+ * allows the removed player to be drafted as their own replacement.
+ */
+export function swapPlayerOffTeamBuggy(
+  db: MockDB,
+  waitlistId: string,
+  teamId: string,
+  userId: string,
+): { removedUserId: string; replacementUserId: string | null } {
+  // Remove from team
+  const tpIndex = db.tables.team_players.findIndex(
+    (tp) => tp.team_id === teamId && tp.user_id === userId,
+  );
+  if (tpIndex !== -1) db.tables.team_players.splice(tpIndex, 1);
+
+  // Transition removed player: playing → waiting (BUG: done BEFORE finding replacement)
+  const wp = db.tables.waitlist_players.find(
+    (w) =>
+      w.waitlist_id === waitlistId &&
+      w.user_id === userId &&
+      w.status === "playing",
+  );
+  if (wp) wp.status = "waiting";
+
+  // Find replacement AFTER removing — BUG: removed player is now "waiting"
+  const replacement = getNextWaiting(db, waitlistId);
+
+  if (replacement) {
+    replacement.status = "playing";
+    db.addPlayerToTeam(teamId, replacement.user_id as string);
+    return { removedUserId: userId, replacementUserId: replacement.user_id as string };
+  }
+
+  return { removedUserId: userId, replacementUserId: null };
 }

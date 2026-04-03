@@ -145,6 +145,24 @@ export function useWaitlist() {
     [withMutation],
   );
 
+  const swapPlayer = useCallback(
+    (teamId: string, userId: string, replacementUserId?: string) =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.swapPlayer(waitlistId, teamId, userId, replacementUserId);
+      }),
+    [waitlistId, withMutation],
+  );
+
+  const updateSettings = useCallback(
+    (settings: { max_wins?: number; game_duration_minutes?: number }) =>
+      withMutation(async () => {
+        if (!waitlistId) return;
+        await api.updateWaitlistSettings(waitlistId, settings);
+      }),
+    [waitlistId, withMutation],
+  );
+
   const updateTeamColor = useCallback(
     (teamId: string, color: string) =>
       withMutation(async () => {
@@ -177,6 +195,8 @@ export function useWaitlist() {
     markLeft,
     reorder,
     declareWinner,
+    swapPlayer,
+    updateSettings,
     updateTeamColor,
   };
 }

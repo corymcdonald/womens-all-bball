@@ -5,7 +5,7 @@ import { supabase } from "./supabase";
 const VALID_TRANSITIONS: Record<string, string[]> = {
   waiting: ["playing", "absent", "left"],
   absent: ["left", "waiting"],
-  playing: ["completed", "left"],
+  playing: ["completed", "left", "waiting"],
 };
 
 export function canTransition(from: string, to: string): boolean {

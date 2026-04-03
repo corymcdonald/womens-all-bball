@@ -416,7 +416,15 @@ function SignUpForm({
             email: email.trim(),
             clerk_id: signUp.createdUserId!,
           });
-          posthog.capture("player_registered", { user_id: supabaseUser.id });
+          // Identify before capturing so the event has person properties
+          posthog.identify(supabaseUser.id, {
+            name: `${supabaseUser.first_name} ${supabaseUser.last_name}`,
+            first_name: supabaseUser.first_name,
+            last_name: supabaseUser.last_name,
+            role: supabaseUser.role,
+            email: supabaseUser.email,
+          });
+          posthog.capture("player_registered");
           await login(supabaseUser);
         }
       } else {

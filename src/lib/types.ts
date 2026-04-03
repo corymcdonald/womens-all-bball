@@ -58,12 +58,13 @@ export type WaitlistDetail = {
     current_streak: number;
   };
   queue: WaitlistPlayer[];
-  playing: { id: string; user_id: string; users: UserSummary }[];
+  playing: TeamPlayer[];
   activeGame: ActiveGame | null;
-  upNext: { id: string; user_id: string; users: UserSummary }[];
+  upNext: WaitlistPlayer[];
   streakTeamId: string | null;
   upNextCount: number;
   stagedTeams: StagedTeam[];
+  totalPlayers: number;
 };
 
 export type GameResult = {

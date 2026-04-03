@@ -88,13 +88,23 @@ export async function registerOrUpsertUser(body: {
     ...(push_token ? { push_token } : {}),
   };
 
-  const query = verifiedClerkId
-    ? supabase.from("users").upsert(fields, { onConflict: "clerk_id" })
-    : email
-      ? await buildEmailUpsertQuery(fields, email)
-      : supabase.from("users").insert(fields);
+  let data, error;
 
-  const { data, error } = await query.select().single();
+  if (verifiedClerkId) {
+    ({ data, error } = await supabase
+      .from("users")
+      .upsert(fields, { onConflict: "clerk_id" })
+      .select()
+      .single());
+  } else if (email) {
+    ({ data, error } = await buildEmailUpsertQuery(fields, email));
+  } else {
+    ({ data, error } = await supabase
+      .from("users")
+      .insert(fields)
+      .select()
+      .single());
+  }
 
   if (error) {
     throw new ServiceError(error.message, 500);
@@ -120,7 +130,11 @@ async function buildEmailUpsertQuery(
     );
   }
 
-  return supabase.from("users").upsert(fields, { onConflict: "email" });
+  return supabase
+    .from("users")
+    .upsert(fields, { onConflict: "email" })
+    .select()
+    .single();
 }
 
 /**

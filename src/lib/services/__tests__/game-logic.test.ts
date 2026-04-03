@@ -158,7 +158,7 @@ describe("Streak calculation", () => {
     g1.winner_id = white.id;
     markTeamCompleted(db, wl.id, blue.id);
     markTeamStaged(db, white.id);
-    wl.current_streak = 1;
+    (wl.current_streak as number) = 1;
 
     // Game 2: White (team1/staying) vs new Blue (team2/challenger)
     const blue2 = formTeam(db, wl.id, "Blue")!;
@@ -170,7 +170,7 @@ describe("Streak calculation", () => {
     const sameTeamWonAgain = g1.winner_id === white.id; // white won g1, white wins g2
     expect(sameTeamWonAgain).toBe(true);
 
-    const newStreak = sameTeamWonAgain ? wl.current_streak + 1 : 1;
+    const newStreak = sameTeamWonAgain ? (wl.current_streak as number) + 1 : 1;
     expect(newStreak).toBe(2);
   });
 
@@ -188,7 +188,7 @@ describe("Streak calculation", () => {
     g1.winner_id = white.id;
     markTeamCompleted(db, wl.id, blue.id);
     markTeamStaged(db, white.id);
-    wl.current_streak = 1;
+    (wl.current_streak as number) = 1;
 
     const blue2 = formTeam(db, wl.id, "Blue")!;
     white.status = "playing";
@@ -200,7 +200,7 @@ describe("Streak calculation", () => {
     const sameTeamWonAgain = g1.winner_id === blue2.id; // white won g1, blue2 wins g2
     expect(sameTeamWonAgain).toBe(false);
 
-    const newStreak = sameTeamWonAgain ? wl.current_streak + 1 : 1;
+    const newStreak = sameTeamWonAgain ? (wl.current_streak as number) + 1 : 1;
     expect(newStreak).toBe(1);
   });
 
@@ -219,7 +219,7 @@ describe("Streak calculation", () => {
     g1.winner_id = blue.id;
     markTeamCompleted(db, wl.id, white.id);
     markTeamStaged(db, blue.id);
-    wl.current_streak = 1;
+    (wl.current_streak as number) = 1;
 
     // Game 2: Blue stays as team2 (right), new White is team1 (left)
     // (orchestrator preserves position)
@@ -232,7 +232,7 @@ describe("Streak calculation", () => {
     const sameTeamWonAgain = g1.winner_id === blue.id;
     expect(sameTeamWonAgain).toBe(true);
 
-    const newStreak = sameTeamWonAgain ? wl.current_streak + 1 : 1;
+    const newStreak = sameTeamWonAgain ? (wl.current_streak as number) + 1 : 1;
     expect(newStreak).toBe(2); // Streak continues regardless of position
   });
 
@@ -250,15 +250,15 @@ describe("Streak calculation", () => {
     g1.winner_id = white.id;
     markTeamCompleted(db, wl.id, blue.id);
     markTeamStaged(db, white.id);
-    wl.current_streak = 1;
+    (wl.current_streak as number) = 1;
 
     const blue2 = formTeam(db, wl.id, "Blue")!;
     white.status = "playing";
     blue2.status = "playing";
 
     // White wins again → streak = 2, maxed (max_wins = 2)
-    const newStreak = wl.current_streak + 1;
-    const streakMaxed = newStreak >= wl.max_wins;
+    const newStreak = (wl.current_streak as number) + 1;
+    const streakMaxed = newStreak >= (wl.max_wins as number);
     expect(streakMaxed).toBe(true);
 
     // Both should be completed

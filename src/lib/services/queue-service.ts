@@ -7,6 +7,100 @@ import {
 import { ServiceError } from "./service-error";
 
 /**
+ * Swap a player on a team with an optional replacement from the queue.
+ * The removed player returns to the queue (playing → waiting).
+ */
+export async function swapPlayerOnTeam(
+  waitlistId: string,
+  teamId: string,
+  userId: string,
+  replacementUserId?: string,
+) {
+  // Verify team belongs to this waitlist and is active
+  const { data: team } = await supabase
+    .from("teams")
+    .select("id, status")
+    .eq("id", teamId)
+    .eq("waitlist_id", waitlistId)
+    .single();
+
+  if (!team) {
+    throw new ServiceError("Team not found", 404);
+  }
+  if (team.status !== "staged" && team.status !== "playing") {
+    throw new ServiceError("Can only swap players on active teams", 400);
+  }
+
+  // Verify user is on the team
+  const { data: teamPlayer } = await supabase
+    .from("team_players")
+    .select("id")
+    .eq("team_id", teamId)
+    .eq("user_id", userId)
+    .single();
+
+  if (!teamPlayer) {
+    throw new ServiceError("Player is not on this team", 404);
+  }
+
+  // Find their waitlist_players row
+  const { data: wpRow } = await supabase
+    .from("waitlist_players")
+    .select("id, status")
+    .eq("waitlist_id", waitlistId)
+    .eq("user_id", userId)
+    .eq("status", "playing")
+    .single();
+
+  if (!wpRow) {
+    throw new ServiceError("Player waitlist row not found", 404);
+  }
+
+  // Find replacement BEFORE removing the player, so they can't be
+  // selected as their own replacement after transitioning to "waiting".
+  let replacement = null;
+  const replaceUserId = replacementUserId
+    ?? (await getNextWaitingPlayer(waitlistId))?.user_id;
+
+  // Remove from team
+  await supabase
+    .from("team_players")
+    .delete()
+    .eq("id", teamPlayer.id);
+
+  // Return to queue (playing → waiting)
+  const removed = await transitionStatus(wpRow.id, "playing", "waiting");
+
+  // Pull replacement onto the team
+  if (replaceUserId) {
+    const { data: replacementWp } = await supabase
+      .from("waitlist_players")
+      .select("id, status")
+      .eq("waitlist_id", waitlistId)
+      .eq("user_id", replaceUserId)
+      .eq("status", "waiting")
+      .single();
+
+    if (replacementWp) {
+      replacement = await transitionStatus(
+        replacementWp.id,
+        "waiting",
+        "playing",
+      );
+      await supabase.from("team_players").insert({
+        team_id: teamId,
+        user_id: replaceUserId,
+      });
+    } else if (replacementUserId) {
+      // Only error if the caller explicitly asked for this player
+      throw new ServiceError("Replacement player is not in the queue", 400);
+    }
+  }
+
+  return { removed, replacement };
+}
+
+/**
  * Add a user to a waitlist queue with status "waiting".
  * Shared by: join, join-token, add-player endpoints.
  * Handles the duplicate-key race condition gracefully.

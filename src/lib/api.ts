@@ -86,8 +86,10 @@ export function registerUser(body: {
   last_name: string;
   email?: string;
   clerk_id?: string;
+  waitlist_id?: string;
+  token?: string;
 }) {
-  return request<User>("/users", {
+  return request<User & { joined?: boolean }>("/users", {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -129,13 +131,6 @@ export function joinWaitlistWithToken(id: string, token: string) {
   return request(`/waitlist/${id}/join-token`, {
     method: "POST",
     body: JSON.stringify({ token }),
-  });
-}
-
-export function joinWaitlist(id: string, passcode: string) {
-  return request(`/waitlist/${id}/join`, {
-    method: "POST",
-    body: JSON.stringify({ passcode }),
   });
 }
 
@@ -205,6 +200,22 @@ export function updateTeam(teamId: string, body: { color?: string }) {
   return request(`/teams/${teamId}`, {
     method: "PATCH",
     body: JSON.stringify(body),
+  });
+}
+
+export function swapPlayer(
+  id: string,
+  teamId: string,
+  userId: string,
+  replacementUserId?: string,
+) {
+  return request(`/waitlist/${id}/swap-player`, {
+    method: "POST",
+    body: JSON.stringify({
+      team_id: teamId,
+      user_id: userId,
+      replacement_user_id: replacementUserId,
+    }),
   });
 }
 

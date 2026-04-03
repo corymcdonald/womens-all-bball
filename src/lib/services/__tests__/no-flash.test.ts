@@ -25,8 +25,8 @@ function getVisibleState(db: MockDB, waitlistId: string) {
     activeGames.length > 0
       ? {
           id: activeGames[0].id,
-          team1PlayerIds: db.getTeamPlayerIds(activeGames[0].team1_id),
-          team2PlayerIds: db.getTeamPlayerIds(activeGames[0].team2_id),
+          team1PlayerIds: db.getTeamPlayerIds(activeGames[0].team1_id as string),
+          team2PlayerIds: db.getTeamPlayerIds(activeGames[0].team2_id as string),
         }
       : null;
 

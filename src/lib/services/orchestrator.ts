@@ -8,7 +8,7 @@ import {
   type DeclareWinnerResult,
 } from "./game-service";
 import { withLock } from "./lock";
-import { addToQueue } from "./queue-service";
+import { addToQueue, swapPlayerOnTeam } from "./queue-service";
 import {
   formTeamFromQueue,
   getStagedTeams,
@@ -125,6 +125,29 @@ export async function joinAndAdvance(waitlistId: string, userId: string) {
   await checkAndAdvance(waitlistId);
   await publishEvent(`waitlist:${waitlistId}`, "updated");
   return player;
+}
+
+/**
+ * Swap a player on a team with an optional queue replacement.
+ * Runs inside the waitlist lock, then publishes "updated".
+ * Does NOT call advance() — admin is making manual adjustments.
+ */
+export async function swapPlayerAndNotify(
+  waitlistId: string,
+  teamId: string,
+  userId: string,
+  replacementUserId?: string,
+) {
+  return withLock(`waitlist:${waitlistId}`, async () => {
+    const result = await swapPlayerOnTeam(
+      waitlistId,
+      teamId,
+      userId,
+      replacementUserId,
+    );
+    await publishEvent(`waitlist:${waitlistId}`, "updated");
+    return result;
+  });
 }
 
 /**

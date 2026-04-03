@@ -45,6 +45,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
+    "react-native-app-clip": "^0.8.0",
     "react-native-draggable-flatlist": "^4.0.3",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-qrcode-svg": "^6.3.21",

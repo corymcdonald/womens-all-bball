@@ -1,13 +1,20 @@
 import { useState } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { ColorPicker } from "@/components/game/color-picker";
+import { SwapSheet } from "@/components/game/swap-sheet";
 import { TeamView, styles as teamStyles } from "@/components/game/team-view";
 import { Skeleton } from "@/components/skeleton";
 import { ThemedText } from "@/components/themed-text";
 import { SemanticColors, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import type { ActiveGame, StagedTeam, TeamPlayer } from "@/lib/types";
+
+type QueuePlayer = {
+  id: string;
+  user_id: string;
+  status: string;
+  users: { id: string; first_name: string; last_name: string };
+};
 
 type Props = {
   activeGame?: ActiveGame | null;
@@ -20,11 +27,20 @@ type Props = {
     winnerSide: "left" | "right";
   } | null;
   isAdmin: boolean;
+  queue?: QueuePlayer[];
   onDeclareWinner?: (gameId: string, winnerId: string) => void;
   onUpdateColor?: (teamId: string, color: string) => void;
+  onSwapPlayer?: (
+    teamId: string,
+    userId: string,
+    replacementUserId?: string,
+  ) => void;
+  mutating?: boolean;
+  maxWins?: number;
+  gameDuration?: number;
 };
 
-// ─── Skeleton & helpers ───
+// ─── Skeleton ───
 
 function SkeletonTeam({ align = "left" }: { align?: "left" | "right" }) {
   const isRight = align === "right";
@@ -35,31 +51,14 @@ function SkeletonTeam({ align = "left" }: { align?: "left" | "right" }) {
         height={14}
         style={isRight ? { alignSelf: "flex-end" } : undefined}
       />
-      <Skeleton
-        width="90%"
-        height={12}
-        style={isRight ? { alignSelf: "flex-end" } : undefined}
-      />
-      <Skeleton
-        width="70%"
-        height={12}
-        style={isRight ? { alignSelf: "flex-end" } : undefined}
-      />
-      <Skeleton
-        width="80%"
-        height={12}
-        style={isRight ? { alignSelf: "flex-end" } : undefined}
-      />
-      <Skeleton
-        width="85%"
-        height={12}
-        style={isRight ? { alignSelf: "flex-end" } : undefined}
-      />
-      <Skeleton
-        width="75%"
-        height={12}
-        style={isRight ? { alignSelf: "flex-end" } : undefined}
-      />
+      {[90, 70, 80, 85, 75].map((w, i) => (
+        <Skeleton
+          key={i}
+          width={`${w}%`}
+          height={12}
+          style={isRight ? { alignSelf: "flex-end" } : undefined}
+        />
+      ))}
     </View>
   );
 }
@@ -73,24 +72,26 @@ export function GameCard({
   stagedTeams = [],
   pendingWinner,
   isAdmin,
+  queue = [],
   onDeclareWinner,
   onUpdateColor,
+  onSwapPlayer,
+  mutating,
+  maxWins,
+  gameDuration,
 }: Props) {
   const theme = useTheme();
-  const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [swapTarget, setSwapTarget] = useState<{
+    teamId: string;
+    userId: string;
+    playerName: string;
+  } | null>(null);
 
-  function handleSelect(teamId: string) {
-    if (confirming) return;
-    setSelectedWinner(selectedWinner === teamId ? null : teamId);
-  }
-
-  async function handleDeclareWinner() {
-    if (!selectedWinner || !onDeclareWinner || !activeGame) return;
+  async function handleDeclareWinner(teamId: string) {
+    if (!onDeclareWinner || !activeGame || confirming) return;
     setConfirming(true);
-    await onDeclareWinner(activeGame.id, selectedWinner);
-    setSelectedWinner(null);
+    await onDeclareWinner(activeGame.id, teamId);
     setConfirming(false);
   }
 
@@ -108,7 +109,6 @@ export function GameCard({
   });
 
   // Determine what to show
-  // Teams stay in their positions — no swapping between left and right.
   const isLive = !!activeGame;
   const isTransitioning = !!pendingWinner;
 
@@ -127,7 +127,6 @@ export function GameCard({
     rightTeam = normalizeGameTeam(activeGame.team2);
     label = "On Court";
 
-    // Show the staying team's win record
     if (streak > 0 && streakTeamId) {
       const record = `${streak}-0`;
       if (streakTeamId === activeGame.team1.id) {
@@ -146,15 +145,50 @@ export function GameCard({
 
   if (!isLive && !isTransitioning && stagedTeams.length === 0) return null;
 
+  function renderTeam(
+    team: { id: string; color: string; players: TeamPlayer[] },
+    opts: { record?: string; align?: "left" | "right" },
+  ) {
+    return (
+      <TeamView
+        color={team.color}
+        players={team.players}
+        record={opts.record}
+        align={opts.align}
+        isAdmin={isAdmin && !isTransitioning}
+        showWinnerButton={isAdmin && isLive}
+        confirming={confirming}
+        mutating={mutating}
+        onDeclareWinner={() => handleDeclareWinner(team.id)}
+        onPlayerTap={
+          onSwapPlayer
+            ? (uid, name) =>
+                setSwapTarget({ teamId: team.id, userId: uid, playerName: name })
+            : undefined
+        }
+        onUpdateColor={
+          onUpdateColor ? (c) => onUpdateColor(team.id, c) : undefined
+        }
+      />
+    );
+  }
+
   return (
     <View
       style={[styles.container, { backgroundColor: theme.backgroundElement }]}
     >
       {/* Header */}
       <View style={styles.header}>
-        <ThemedText type="smallBold" style={styles.label}>
-          {label}
-        </ThemedText>
+        <View style={styles.headerLeft}>
+          <ThemedText type="smallBold" style={styles.label}>
+            {label}
+          </ThemedText>
+          {!isTransitioning && gameDuration && maxWins && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {gameDuration}min · Win {maxWins} to stay
+            </ThemedText>
+          )}
+        </View>
         {isLive && (
           <View style={styles.liveIndicator}>
             <View style={styles.liveDot} />
@@ -165,7 +199,7 @@ export function GameCard({
         )}
       </View>
 
-      {/* Teams row — teams stay in their positions, never swap sides */}
+      {/* Teams row */}
       <View style={styles.teamsRow}>
         {/* Left side */}
         {isTransitioning ? (
@@ -178,28 +212,7 @@ export function GameCard({
             <SkeletonTeam />
           )
         ) : leftTeam ? (
-          <>
-            <TeamView
-              color={leftTeam.color}
-              players={leftTeam.players}
-              record={leftRecord}
-              isSelected={selectedWinner === leftTeam.id}
-              isTappable={isAdmin && isLive}
-              onTap={() => handleSelect(leftTeam!.id)}
-            />
-            {isAdmin &&
-              !isLive &&
-              editingTeamId === leftTeam.id &&
-              onUpdateColor && (
-                <ColorPicker
-                  currentColor={leftTeam.color}
-                  onSelect={(c) => {
-                    onUpdateColor(leftTeam!.id, c);
-                    setEditingTeamId(null);
-                  }}
-                />
-              )}
-          </>
+          renderTeam(leftTeam, { record: leftRecord })
         ) : (
           <SkeletonTeam />
         )}
@@ -218,71 +231,23 @@ export function GameCard({
             <SkeletonTeam align="right" />
           )
         ) : rightTeam ? (
-          <>
-            <TeamView
-              color={rightTeam.color}
-              players={rightTeam.players}
-              record={rightRecord}
-              align="right"
-              isSelected={selectedWinner === rightTeam.id}
-              isTappable={isAdmin && isLive}
-              onTap={() => handleSelect(rightTeam!.id)}
-            />
-            {isAdmin &&
-              !isLive &&
-              editingTeamId === rightTeam.id &&
-              onUpdateColor && (
-                <ColorPicker
-                  currentColor={rightTeam.color}
-                  align="right"
-                  onSelect={(c) => {
-                    onUpdateColor(rightTeam!.id, c);
-                    setEditingTeamId(null);
-                  }}
-                />
-              )}
-          </>
+          renderTeam(rightTeam, { record: rightRecord, align: "right" })
         ) : (
           <SkeletonTeam align="right" />
         )}
       </View>
 
-      {/* Game info */}
-      {isLive && (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.info}>
-          {activeGame.game_duration_minutes} min games
-        </ThemedText>
-      )}
-
-      {/* Admin: color edit toggle for staged teams */}
-      {isAdmin && !isLive && !isTransitioning && stagedTeams.length > 0 && (
-        <View style={styles.editRow}>
-          {[leftTeam, rightTeam].filter(Boolean).map((team) => (
-            <TouchableOpacity
-              key={team!.id}
-              onPress={() =>
-                setEditingTeamId(editingTeamId === team!.id ? null : team!.id)
-              }
-            >
-              <ThemedText type="small" style={styles.editText}>
-                {editingTeamId === team!.id ? "Done" : `Edit ${team!.color}`}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* Declare winner button */}
-      {isAdmin && isLive && selectedWinner && (
-        <TouchableOpacity
-          style={[styles.declareButton, confirming && styles.buttonDisabled]}
-          onPress={handleDeclareWinner}
-          disabled={confirming}
-        >
-          <ThemedText style={styles.declareButtonText} themeColor="background">
-            {confirming ? "Declaring..." : "Declare Winner"}
-          </ThemedText>
-        </TouchableOpacity>
+      {/* Swap player sheet */}
+      {swapTarget && onSwapPlayer && (
+        <SwapSheet
+          visible
+          playerName={swapTarget.playerName}
+          teamId={swapTarget.teamId}
+          userId={swapTarget.userId}
+          queue={queue}
+          onSwap={onSwapPlayer}
+          onClose={() => setSwapTarget(null)}
+        />
       )}
     </View>
   );
@@ -298,6 +263,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerLeft: {
+    gap: 2,
   },
   label: {
     textTransform: "uppercase",
@@ -329,30 +297,5 @@ const styles = StyleSheet.create({
     color: "#888",
     paddingHorizontal: Spacing.two,
     alignSelf: "center",
-  },
-  info: {
-    textAlign: "center",
-  },
-  editRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  editText: {
-    color: SemanticColors.primary,
-    fontWeight: "600",
-  },
-  declareButton: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: SemanticColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  declareButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buttonDisabled: {
-    opacity: 0.4,
   },
 });
