@@ -1,7 +1,7 @@
 export default {
   expo: {
-    name: "womens-all-bball",
-    slug: "womens-all-bball",
+    name: "womens-all-b-ball",
+    slug: "womens-all-b-ball",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
@@ -43,6 +43,10 @@ export default {
     extra: {
       posthogProjectToken: process.env.POSTHOG_PROJECT_TOKEN,
       posthogHost: process.env.POSTHOG_HOST,
+      eas: {
+        projectId: "312b926b-d8bf-4fdf-b287-0f10c9d5c27b",
+      },
     },
+    owner: "corymc",
   },
 };
