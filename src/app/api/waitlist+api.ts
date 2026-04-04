@@ -28,7 +28,8 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const passcode =
-    body.passcode ?? PASSCODES[Math.floor(Math.random() * PASSCODES.length)];
+    body.passcode ??
+    PASSCODES[crypto.getRandomValues(new Uint32Array(1))[0] % PASSCODES.length];
 
   const { data, error } = await supabase
     .from("waitlists")
