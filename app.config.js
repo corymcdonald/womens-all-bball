@@ -8,9 +8,14 @@ export default {
     scheme: "womensallbball",
     userInterfaceStyle: "automatic",
     ios: {
+      bundleIdentifier: "com.womensallbball.app",
       icon: "./assets/expo.icon",
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
+      package: "com.womensallbball.app",
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -34,6 +39,11 @@ export default {
             imageWidth: 76,
           },
         },
+        "expo-font",
+        "expo-image",
+        "expo-localization",
+        "expo-secure-store",
+        "expo-web-browser",
       ],
     ],
     experiments: {
