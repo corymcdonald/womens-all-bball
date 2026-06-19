@@ -1,3 +1,5 @@
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { getStoredUser } from "./user-store";
 import type {
   User,
@@ -8,7 +10,13 @@ import type {
   JoinToken,
 } from "./types";
 
-const API_BASE = "/api";
+// On web the app is served from the same origin as the +api.ts routes, so a
+// relative base works. Native builds have no page origin, so requests must
+// target the deployed EAS Hosting server (configured as `apiOrigin` /
+// expo-router `origin` in app.config.js).
+const apiOrigin =
+  (Constants.expoConfig?.extra?.apiOrigin as string | undefined) ?? "";
+const API_BASE = Platform.OS === "web" ? "/api" : `${apiOrigin}/api`;
 
 // Clerk token getter — set by the app when a Clerk session is active
 let _getClerkToken: (() => Promise<string | null>) | null = null;

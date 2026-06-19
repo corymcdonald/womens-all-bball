@@ -1,3 +1,9 @@
+// Stable EAS Hosting production alias (set via `eas deploy --prod`). Native
+// builds have no page origin, so API route fetches must target this absolute
+// URL. Override per-environment with EXPO_PUBLIC_API_ORIGIN if needed.
+const apiOrigin =
+  process.env.EXPO_PUBLIC_API_ORIGIN ?? "https://womens-all-b-ball.expo.app";
+
 export default {
   expo: {
     name: "womens-all-b-ball",
@@ -29,7 +35,7 @@ export default {
       favicon: "./assets/images/favicon.png",
     },
     plugins: [
-      "expo-router",
+      ["expo-router", { origin: apiOrigin }],
       [
         "expo-splash-screen",
         {
@@ -51,6 +57,7 @@ export default {
       reactCompiler: true,
     },
     extra: {
+      apiOrigin,
       posthogProjectToken: process.env.POSTHOG_PROJECT_TOKEN,
       posthogHost: process.env.POSTHOG_HOST,
       eas: {
